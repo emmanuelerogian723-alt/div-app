@@ -916,6 +916,21 @@ $('install-btn').addEventListener('click', async () => {
   }
 })();
 
+/* ---------- Real install tracking: DIV running as an installed Home Screen app ---------- */
+(function realInstallTrack() {
+  try {
+    const standaloneNow = window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+    if (standaloneNow && isIOS && !localStorage.getItem('div-install-tracked')) {
+      localStorage.setItem('div-install-tracked', '1');
+      const fn = 'https://solas-913e5e4f.base44.app/functions/divDownloadCounter';
+      const body = JSON.stringify({ action: 'track', type: 'ios' });
+      if (navigator.sendBeacon) navigator.sendBeacon(fn, new Blob([body], { type: 'application/json' }));
+      else fetch(fn, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true });
+    }
+  } catch (e) {}
+})();
+
 /* ---------- Boot ---------- */
 (function boot() {
   wakeServer();
