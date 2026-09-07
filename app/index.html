@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#7C3AED">
-<meta name="description" content="DIV — Your friendly AI teacher. Learn all subjects from secondary school to university with AI tutoring, tests, assignments and voice chat.">
+<meta name="description" content="DIV — Your friendly AI teacher. Learn all subjects from secondary school to university with AI tutoring, tests, assignments and voice chat. Made with S.T.E.W AI.">
 <title>DIV — Your AI Teacher</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
@@ -19,6 +19,14 @@
 </head>
 <body>
 
+<!-- ============ SPLASH ============ -->
+<div id="splash">
+  <img src="img/mascot.png" class="splash-mascot float" alt="DIV">
+  <h1 class="splash-title">DIV</h1>
+  <p class="splash-tag">Your AI Teacher</p>
+  <div class="splash-stew">✨ Made with <b>S.T.E.W AI</b> ✨</div>
+</div>
+
 <!-- ============ ONBOARDING ============ -->
 <div id="screen-onboarding" class="screen active">
   <div class="ob-steps">
@@ -31,8 +39,8 @@
         <h1>Hi! I'm <span class="grad-text">DIV</span> 👋</h1>
         <p>Your pocket AI teacher. I can teach you <b>every subject</b>, give you tests &amp; assignments, and we can even talk with <b>voice</b>!</p>
       </div>
-      <button class="btn-chunky btn-primary ob-next" data-goto="2">Let's Go! <span>→</span></button>
-      <p class="ob-skipnote">100% free. Powered by S.T.E.W AI.</p>
+      <button class="btn-chunky btn-primary ob-next" data-goto="auth">Let's Go! <span>→</span></button>
+      <p class="ob-skipnote">✨ Made with S.T.E.W AI · 100% free</p>
     </div>
 
     <!-- Step 2: Level -->
@@ -102,6 +110,31 @@
   </div>
 </div>
 
+<!-- ============ AUTH (signup / login) ============ -->
+<div id="screen-auth" class="auth-overlay">
+  <div class="auth-card">
+    <img src="img/mascot-small.png" class="auth-mascot float">
+    <h2 id="auth-title">Create your free account ✨</h2>
+    <p id="auth-sub" class="auth-sub">Save your progress and sync across devices.</p>
+    <div class="form-group" id="auth-name-row">
+      <label>Your name</label>
+      <input id="auth-name" type="text" placeholder="e.g. Ada">
+    </div>
+    <div class="form-group">
+      <label>Email</label>
+      <input id="auth-email" type="email" placeholder="you@email.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input id="auth-password" type="password" placeholder="At least 6 characters" autocomplete="new-password">
+    </div>
+    <button id="auth-btn" class="btn-chunky btn-primary">Create Account</button>
+    <p id="auth-switch-line" class="auth-switch-line">Already have an account? <b id="auth-switch">Log in</b></p>
+    <button id="auth-skip" class="auth-skip">Continue without an account →</button>
+    <p class="auth-stew">🔐 Secured by Firebase · Made with S.T.E.W AI</p>
+  </div>
+</div>
+
 <!-- ============ MAIN APP ============ -->
 <div id="app-main" class="app-main hidden">
   <!-- HOME -->
@@ -136,6 +169,8 @@
 
     <div class="section-head"><h3>Your Subjects</h3><button class="link-btn" data-go="profile">Edit</button></div>
     <div id="home-subjects" class="subject-grid"></div>
+
+    <div class="stew-banner">✨ DIV's brain is <b>S.T.E.W AI</b> — the autonomous AI platform. <a href="https://stew-agent.onrender.com/" target="_blank" rel="noopener">Meet S.T.E.W →</a></div>
   </div>
 
   <!-- TUTOR CHAT -->
@@ -150,7 +185,7 @@
     </div>
     <div id="typing-row" class="typing hidden"><span></span><span></span><span></span></div>
     <div class="chat-input-row">
-      <button id="mic-btn" class="mic-btn" title="Hold to speak">🎙️</button>
+      <button id="mic-btn" class="mic-btn" title="Tap to speak">🎙️</button>
       <input id="chat-input" type="text" placeholder="Ask me anything..." autocomplete="off">
       <button id="send-btn" class="send-btn">➤</button>
     </div>
@@ -159,7 +194,7 @@
 
   <!-- TESTS -->
   <div id="screen-tests" class="screen">
-    <div class="tab-head"><h2>Tests 📝</h2><p>Pick a subject — DIV will generate a fresh quiz just for you.</p></div>
+    <div class="tab-head"><h2>Tests 📝</h2><p>Pick a subject — S.T.E.W AI will generate a fresh quiz just for you.</p></div>
     <div id="tests-subjects" class="subject-grid"></div>
   </div>
 
@@ -172,7 +207,7 @@
     </div>
     <div id="quiz-loading" class="quiz-loading">
       <img src="img/mascot-small.png" class="float">
-      <p>DIV is writing your quiz...</p>
+      <p>S.T.E.W AI is writing your quiz...</p>
       <div class="typing"><span></span><span></span><span></span></div>
     </div>
     <div id="quiz-body" class="hidden">
@@ -184,7 +219,7 @@
 
   <!-- ASSIGNMENTS -->
   <div id="screen-assignments" class="screen">
-    <div class="tab-head"><h2>Assignments 📚</h2><p>Get an assignment, write your answer, DIV grades it.</p></div>
+    <div class="tab-head"><h2>Assignments 📚</h2><p>Get an assignment, write your answer, S.T.E.W AI grades it.</p></div>
     <div id="assign-subjects" class="subject-grid"></div>
     <div id="assign-body" class="hidden">
       <div id="assign-question" class="assign-question"></div>
@@ -215,13 +250,18 @@
       <img src="img/mascot-small.png" class="profile-mascot">
       <div id="profile-info"></div>
     </div>
+    <div class="section-head"><h3>Account</h3></div>
+    <div id="auth-card" class="auth-card-mini"></div>
     <div class="section-head"><h3>My Subjects</h3></div>
     <div id="profile-subjects" class="chips-grid"></div>
     <div class="section-head"><h3>Settings</h3></div>
     <div class="settings-row"><span>🔊 Voice replies in chat</span><label class="switch"><input type="checkbox" id="set-voice" checked><span class="slider"></span></label></div>
+    <div class="settings-row voice-row"><div><b>🎙️ Voice</b><small id="voice-cur">Tap to choose a natural voice</small></div><button id="voice-pick-btn" class="link-btn">Choose</button></div>
+    <div class="settings-row"><div><b>⚡ Speech speed</b><small id="rate-val">1.0×</small></div><input type="range" id="set-rate" min="0.7" max="1.3" step="0.1" value="1" class="range-slider"></div>
     <button id="install-btn" class="btn-chunky btn-teal hidden">📲 Install DIV App</button>
     <button id="clear-data" class="btn-chunky btn-danger-outline">Clear All Data</button>
-    <p class="version-note">DIV v1.0 · Powered by S.T.E.W AI</p>
+    <div class="stew-banner">✨ Made with <b>S.T.E.W AI</b> · The autonomous AI platform</div>
+    <p class="version-note">DIV v2.0 · Powered by S.T.E.W AI 💜</p>
   </div>
 
   <!-- BOTTOM NAV -->
@@ -232,6 +272,19 @@
     <button class="nav-btn" data-go="progress"><span>🏆</span>Progress</button>
     <button class="nav-btn" data-go="profile"><span>👤</span>Profile</button>
   </nav>
+</div>
+
+<!-- ============ VOICE PICKER MODAL ============ -->
+<div id="voice-modal" class="voice-modal">
+  <div id="voice-modal-bg" class="voice-modal-bg"></div>
+  <div class="voice-modal-card">
+    <div class="voice-modal-head">
+      <h3>🎙️ Choose your voice</h3>
+      <button id="voice-modal-close" class="voice-close">✕</button>
+    </div>
+    <p class="voice-hint">Preview each voice and pick the one that sounds most natural to you.</p>
+    <div id="voice-list" class="voice-list"></div>
+  </div>
 </div>
 
 <script src="js/app.js"></script>

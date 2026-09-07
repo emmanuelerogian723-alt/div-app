@@ -280,3 +280,77 @@ input, textarea { font-family: inherit; }
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-thumb { background: var(--purple-light); border-radius: 4px; }
+
+/* ============ v2: Splash ============ */
+#splash {
+  position: fixed; inset: 0; z-index: 200; background: linear-gradient(160deg, var(--purple) 0%, #9F67FF 70%, var(--pink) 130%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  transition: opacity .45s ease, visibility .45s; max-width: 480px; margin: 0 auto;
+}
+#splash.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+#splash.hidden { display: none; }
+.splash-mascot { width: 140px; height: 140px; object-fit: contain; filter: drop-shadow(0 14px 30px rgba(0,0,0,.3)); }
+.splash-title { font-family: var(--font-head); font-size: 3.4rem; font-weight: 700; color: #fff; letter-spacing: .02em; }
+.splash-tag { color: rgba(255,255,255,.92); font-weight: 800; font-size: 1.1rem; margin-top: -6px; }
+.splash-stew { margin-top: 26px; color: #fff; background: rgba(255,255,255,.18); backdrop-filter: blur(6px);
+  padding: 8px 18px; border-radius: 999px; font-size: .85rem; font-weight: 700; }
+.splash-stew b { font-weight: 900; }
+
+/* ============ v2: Auth overlay ============ */
+.auth-overlay { position: fixed; inset: 0; z-index: 150; display: none; align-items: center; justify-content: center; padding: 22px;
+  background: rgba(30,27,46,.55); backdrop-filter: blur(6px); max-width: 480px; margin: 0 auto; }
+.auth-overlay.active { display: flex; }
+.auth-card { background: var(--card); border-radius: 30px; padding: 26px 22px; width: 100%; text-align: center;
+  box-shadow: 0 30px 60px rgba(30,27,46,.35); animation: popIn .3s ease; }
+.auth-mascot { width: 70px; height: 70px; object-fit: contain; margin: 0 auto 4px; display: block; }
+.auth-card h2 { font-family: var(--font-head); font-weight: 600; font-size: 1.45rem; margin-bottom: 4px; }
+.auth-sub { color: var(--ink-soft); font-size: .9rem; font-weight: 700; margin-bottom: 14px; }
+.auth-card .form-group { text-align: left; }
+.auth-card input { width: 100%; }
+.auth-switch-line { margin-top: 14px; font-size: .9rem; color: var(--ink-soft); font-weight: 700; }
+.auth-switch-line b { color: var(--purple); cursor: pointer; }
+.auth-skip { display: block; margin: 14px auto 0; background: none; color: var(--ink-faint); font-weight: 800; font-size: .85rem; }
+.auth-stew { margin-top: 16px; color: var(--ink-faint); font-size: .72rem; font-weight: 800; }
+.auth-card-mini { background: var(--card); border: 2px solid var(--line); border-radius: var(--radius-sm); padding: 16px; }
+.auth-line { font-size: .88rem; color: var(--ink-soft); font-weight: 700; margin-bottom: 10px; word-break: break-all; }
+.auth-dot { color: var(--green); font-weight: 900; }
+.auth-card-mini .btn-chunky { margin-top: 4px; }
+
+/* ============ v2: S.T.E.W banner ============ */
+.stew-banner { margin-top: 22px; background: linear-gradient(135deg, var(--purple-soft), var(--teal-light));
+  border: 2px dashed var(--purple); border-radius: var(--radius-sm); padding: 14px 16px;
+  font-size: .85rem; font-weight: 700; color: var(--ink-soft); text-align: center; line-height: 1.5; }
+.stew-banner b { color: var(--purple); }
+.stew-banner a { color: var(--teal-dark); font-weight: 900; }
+.stew-credit { font-size: .78rem !important; color: var(--ink-faint) !important; font-weight: 800; }
+
+/* ============ v2: Voice picker ============ */
+.voice-modal { position: fixed; inset: 0; z-index: 160; display: none; max-width: 480px; margin: 0 auto; }
+.voice-modal.active { display: block; }
+.voice-modal-bg { position: absolute; inset: 0; background: rgba(30,27,46,.55); backdrop-filter: blur(4px); }
+.voice-modal-card { position: absolute; bottom: 0; left: 0; right: 0; background: var(--card); border-radius: 28px 28px 0 0;
+  padding: 20px 18px calc(24px + env(safe-area-inset-bottom)); max-height: 75dvh; overflow-y: auto; animation: slideUp .3s ease; }
+.voice-modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.voice-modal-head h3 { font-family: var(--font-head); font-weight: 600; font-size: 1.2rem; }
+.voice-close { font-size: 1rem; background: var(--purple-soft); width: 34px; height: 34px; border-radius: 12px; color: var(--purple); }
+.voice-hint { font-size: .85rem; color: var(--ink-soft); font-weight: 700; margin-bottom: 14px; }
+.voice-list { display: flex; flex-direction: column; gap: 8px; }
+.voice-row { display: flex; justify-content: space-between; align-items: center; background: var(--bg);
+  border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.voice-row.selected { border-color: var(--purple); background: var(--purple-soft); }
+.voice-row b { font-size: .92rem; }
+.voice-row small { display: block; color: var(--ink-faint); font-size: .75rem; font-weight: 700; }
+.voice-row > span { color: var(--purple); font-weight: 900; }
+.voice-actions { display: flex; align-items: center; gap: 10px; }
+.voice-prev { background: var(--purple); color: #fff; width: 34px; height: 34px; border-radius: 50%; font-size: .8rem;
+  box-shadow: 0 3px 0 var(--purple-deep); }
+.voice-empty { text-align: center; color: var(--ink-faint); font-weight: 700; padding: 20px; }
+
+/* ============ v2: Range slider & misc ============ */
+.range-slider { -webkit-appearance: none; width: 150px; height: 8px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--purple) 40%, var(--purple-light) 40%); outline: none; }
+.range-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%;
+  background: #fff; border: 3px solid var(--purple); box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.settings-row { align-items: center; }
+.settings-row small { display: block; color: var(--ink-faint); font-size: .75rem; margin-top: 2px; }
+.voice-row small { font-weight: 700; }

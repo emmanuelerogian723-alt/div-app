@@ -1,18 +1,37 @@
-/* ============ DIV — AI Learning App ============
-   Powered by S.T.E.W API (https://stew-agent.onrender.com)
+/* ============ DIV — AI Learning App v2 ============
+   Made with S.T.E.W AI (https://stew-agent.onrender.com)
+   Auth & sync: Firebase (project: ominiassist-ai)
 =================================================== */
 const STEW_API = 'https://stew-agent.onrender.com';
+const FB = { apiKey: 'AIzaSyBRhBF6Nscqz53rMCF0ykAcMnWuRIrfgJw', projectId: 'ominiassist-ai' };
 const $ = id => document.getElementById(id);
 
-/* ---------- Subjects ---------- */
-const SUBJECTS = [
+/* ---------- Subjects (level-aware) ---------- */
+const SECONDARY_SUBJECTS = [
   ['Mathematics','➗'],['English Language','📖'],['Physics','🔬'],['Chemistry','⚗️'],
   ['Biology','🌿'],['Economics','📈'],['Government','🏛️'],['Literature','📚'],
   ['Geography','🗺️'],['History','⏳'],['Agricultural Science','🌾'],['Computer Science','💻'],
   ['Further Mathematics','📐'],['Commerce','🛒'],['Financial Accounting','🧾'],
-  ['Civic Education','🤝'],['CRS','✝️'],['IRS','☪️'],['French','🇫🇷']
+  ['Civic Education','🤝'],['CRS','✝️'],['IRS','☪️'],['French','🇫🇷'],
+  ['Technical Drawing','📏'],['Home Economics','🍳'],['Music','🎵'],['Yoruba','🗣️'],['Igbo','🗣️'],['Hausa','🗣️']
 ];
-const SUB_EMOJI = Object.fromEntries(SUBJECTS);
+const UNI_SUBJECTS = [
+  ['Mathematics','➗'],['English','📖'],['Statistics','📊'],['Physics','🔬'],['Chemistry','⚗️'],
+  ['Biology','🌿'],['Geology','🪨'],['Biochemistry','🧬'],['Microbiology','🦠'],['Anatomy','🫀'],
+  ['Physiology','💓'],['Nursing','🩺'],['Public Health','🏥'],['Medicine & Surgery','🩻'],
+  ['Pharmacy','💊'],['Pharmacology','💉'],['Law','⚖️'],['Economics','📈'],['Accounting','🧾'],
+  ['Banking & Finance','🏦'],['Business Administration','💼'],['Marketing','📣'],
+  ['Entrepreneurship','🚀'],['Taxation','🧮'],['Auditing','🔍'],['Political Science','🏛️'],
+  ['Psychology','🧠'],['Sociology','👥'],['Philosophy','🤔'],['Mass Communication','📰'],
+  ['International Relations','🌍'],['Public Administration','📋'],['Criminology','🚔'],
+  ['Computer Science','💻'],['Software Engineering','👨‍💻'],['Data Science','🤖'],
+  ['Cyber Security','🔐'],['Information Technology','🖥️'],['Electrical Engineering','⚡'],
+  ['Mechanical Engineering','⚙️'],['Civil Engineering','🏗️'],['Chemical Engineering','🧪'],
+  ['Computer Engineering','🔌'],['Petroleum Engineering','🛢️'],['Food Science','🍎'],
+  ['Agricultural Economics','🌾'],['Education','🎓'],['Linguistics','🗣️'],
+  ['Theatre Arts','🎭'],['Fine Arts','🎨'],['Religious Studies','🙏']
+];
+const SUB_EMOJI = Object.fromEntries([...SECONDARY_SUBJECTS, ...UNI_SUBJECTS]);
 
 /* ---------- State ---------- */
 let profile = JSON.parse(localStorage.getItem('div_profile') || 'null');
@@ -20,12 +39,105 @@ let progress = JSON.parse(localStorage.getItem('div_progress') || 'null') || {
   xp: 0, streak: 0, lastDay: '', todayXP: 0, questions: 0, tests: 0, assignments: 0,
   subjects: {}, badges: []
 };
-let settings = JSON.parse(localStorage.getItem('div_settings') || 'null') || { voice: true };
-const save = () => {
+let settings = JSON.parse(localStorage.getItem('div_settings') || 'null') || { voice: true, voiceURI: null, rate: 1.0 };
+let authUser = JSON.parse(localStorage.getItem('div_auth') || 'null');
+
+let saveTimer = null;
+function save() {
   localStorage.setItem('div_profile', JSON.stringify(profile));
   localStorage.setItem('div_progress', JSON.stringify(progress));
   localStorage.setItem('div_settings', JSON.stringify(settings));
-};
+  scheduleSync();
+}
+function scheduleSync() {
+  if (!authUser) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(syncUp, 2000);
+}
+
+/* ---------- Firebase Auth (REST) ---------- */
+async function getIdToken() {
+  if (!authUser) return null;
+  if (Date.now() < (authUser.expiresAt || 0) - 60000) return authUser.idToken;
+  try {
+    const r = await fetch(`https://securetoken.googleapis.com/v1/token?key=${FB.apiKey}`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: authUser.refreshToken })
+    });
+    const d = await r.json();
+    if (d.id_token) {
+      authUser = { uid: d.user_id, email: authUser.email, name: authUser.name,
+        idToken: d.id_token, refreshToken: d.refresh_token, expiresAt: Date.now() + (+d.expires_in * 1000) };
+      localStorage.setItem('div_auth', JSON.stringify(authUser));
+      return d.id_token;
+    }
+  } catch (e) {}
+  return authUser.idToken;
+}
+async function fbSignup(name, email, password) {
+  const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FB.apiKey}`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ email, password, returnSecureToken: true })
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+  authUser = { uid: d.localId, email, name, idToken: d.idToken, refreshToken: d.refreshToken, expiresAt: Date.now() + (+d.expiresIn * 1000) };
+  localStorage.setItem('div_auth', JSON.stringify(authUser));
+  return authUser;
+}
+async function fbLogin(email, password) {
+  const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FB.apiKey}`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ email, password, returnSecureToken: true })
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+  authUser = { uid: d.localId, email, name: d.displayName || '', idToken: d.idToken, refreshToken: d.refreshToken, expiresAt: Date.now() + (+d.expiresIn * 1000) };
+  localStorage.setItem('div_auth', JSON.stringify(authUser));
+  return authUser;
+}
+function fbLogout() {
+  authUser = null; localStorage.removeItem('div_auth'); toast('Logged out');
+}
+/* Firestore sync: users/{uid} */
+async function syncUp() {
+  if (!authUser) return;
+  const token = await getIdToken();
+  try {
+    await fetch(`https://firestore.googleapis.com/v1/projects/${FB.projectId}/databases/(default)/documents/users/${authUser.uid}`, {
+      method: 'PATCH', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: {
+        profileJ: { stringValue: JSON.stringify(profile || {}) },
+        progressJ: { stringValue: JSON.stringify(progress) },
+        settingsJ: { stringValue: JSON.stringify(settings) },
+        name: { stringValue: (profile && profile.name) || '' },
+        email: { stringValue: authUser.email || '' }
+      }})
+    });
+  } catch (e) {}
+}
+async function syncDown() {
+  if (!authUser) return false;
+  const token = await getIdToken();
+  try {
+    const r = await fetch(`https://firestore.googleapis.com/v1/projects/${FB.projectId}/databases/(default)/documents/users/${authUser.uid}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!r.ok) return false;
+    const d = await r.json();
+    const f = d.fields || {};
+    if (f.profileJ) {
+      const p = JSON.parse(f.profileJ.stringValue);
+      if (p && p.subjects && p.subjects.length) profile = p;
+    }
+    if (f.progressJ) progress = JSON.parse(f.progressJ.stringValue);
+    if (f.settingsJ) settings = JSON.parse(f.settingsJ.stringValue);
+    localStorage.setItem('div_profile', JSON.stringify(profile));
+    localStorage.setItem('div_progress', JSON.stringify(progress));
+    localStorage.setItem('div_settings', JSON.stringify(settings));
+    return !!(profile && profile.subjects);
+  } catch (e) { return false; }
+}
 
 /* ---------- Streak / XP ---------- */
 function today() { return new Date().toISOString().slice(0,10); }
@@ -54,7 +166,7 @@ function checkBadges() {
   if (progress.xp >= 500) earned('Brain Diamond 💎');
 }
 
-/* ---------- S.T.E.W API ---------- */
+/* ---------- S.T.E.W AI ---------- */
 async function stewChat(message, userId) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 75000);
@@ -66,7 +178,7 @@ async function stewChat(message, userId) {
     const data = await resp.json();
     return (data.response || data.reply || '').trim() || "Hmm, I didn't catch that. Try again!";
   } catch (e) {
-    if (e.name === 'AbortError') return "⏳ I'm taking too long — the S.T.E.W server might be waking up. Please try again in a moment!";
+    if (e.name === 'AbortError') return "⏳ I'm taking too long — S.T.E.W AI is waking up. Try again in a moment!";
     return "😕 Connection hiccup. Check your internet and try again.";
   } finally { clearTimeout(timer); }
 }
@@ -76,9 +188,7 @@ function studentContext() {
     return `[You are tutoring ${profile.name}, a university student of ${profile.uni}. Their subjects: ${profile.subjects.join(', ')}.] `;
   return `[You are tutoring ${profile.name}, a ${profile.class} secondary school student${profile.secSchool ? ' at ' + profile.secSchool : ''}. Their subjects: ${profile.subjects.join(', ')}.] `;
 }
-async function wakeServer() {
-  fetch(`${STEW_API}/heartbeat`).catch(() => {});
-}
+function wakeServer() { fetch(`${STEW_API}/heartbeat`).catch(() => {}); }
 
 /* ---------- Toast ---------- */
 let toastTimer;
@@ -92,7 +202,7 @@ function toast(msg) {
 /* ---------- Navigation ---------- */
 function go(screen) {
   document.querySelectorAll('#app-main .screen').forEach(s => s.classList.remove('active'));
-  const map = { assignments: 'screen-assignments' };
+  const map = { assignments: 'screen-assignments', quiz: 'screen-quiz' };
   const el = $(map[screen] || `screen-${screen}`);
   if (el) el.classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b =>
@@ -110,8 +220,10 @@ document.addEventListener('click', e => {
 
 /* ---------- Onboarding ---------- */
 let obLevel = null, obClass = null, obSubjects = [];
+function subjectListFor(level) { return level === 'university' ? UNI_SUBJECTS : SECONDARY_SUBJECTS; }
 function renderObSubjects() {
-  $('ob-subjects').innerHTML = SUBJECTS.map(([name, emoji]) =>
+  const list = subjectListFor(obLevel || 'secondary');
+  $('ob-subjects').innerHTML = list.map(([name, emoji]) =>
     `<button class="chip-select subject-chip" data-subject="${name}">
        <span class="chip-emoji">${emoji}</span>${name}</button>`).join('');
   $('ob-subjects').querySelectorAll('.chip-select').forEach(btn => btn.addEventListener('click', () => {
@@ -124,12 +236,12 @@ function obGo(step) {
   document.querySelectorAll('.ob-step').forEach(s => s.classList.remove('active'));
   const el = document.querySelector(`.ob-step[data-step="${step}"]`);
   if (el) el.classList.add('active');
-  const bars = { 1: 20, 2: 40, '3u': 60, '3s': 60, 4: 80, 5: 95 };
+  const bars = { 1: 14, auth: 28, 2: 40, '3u': 60, '3s': 60, 4: 80, 5: 95 };
   $('ob-bar').style.width = (bars[step] || 20) + '%';
 }
 function finishOnboarding() {
   profile = {
-    name: $('student-name').value.trim() || 'Student',
+    name: $('student-name').value.trim() || (authUser && authUser.name) || 'Student',
     level: obLevel,
     class: obLevel === 'secondary' ? obClass : null,
     secSchool: obLevel === 'secondary' ? ($('sec-school').value.trim() || null) : null,
@@ -138,6 +250,7 @@ function finishOnboarding() {
     subjects: obSubjects
   };
   save();
+  if (authUser) syncUp();
   $('screen-onboarding').classList.add('hidden');
   $('app-main').classList.remove('hidden');
   addXP(10);
@@ -146,7 +259,7 @@ function finishOnboarding() {
 }
 function initOnboarding() {
   renderObSubjects();
-  $('ob-bar').style.width = '20%';
+  obGo('1');
   document.querySelectorAll('.ob-next').forEach(btn => btn.addEventListener('click', () => {
     const goto = btn.dataset.goto;
     if (goto === 'finish') { finishOnboarding(); return; }
@@ -161,6 +274,7 @@ function initOnboarding() {
     document.querySelectorAll('.level-card').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
     obLevel = btn.dataset.level;
+    renderObSubjects();
     setTimeout(() => obGo(obLevel === 'university' ? '3u' : '3s'), 300);
   }));
   document.querySelectorAll('[data-class]').forEach(btn => btn.addEventListener('click', () => {
@@ -170,13 +284,68 @@ function initOnboarding() {
     const cont = document.querySelector('.ob-step[data-step="3s"] .btn-chunky');
     if (cont) cont.disabled = false;
   }));
-  // Continue button on the secondary step
   const secCont = document.createElement('button');
   secCont.className = 'btn-chunky btn-primary';
   secCont.textContent = 'Continue →';
   secCont.disabled = true;
   secCont.addEventListener('click', () => obGo('4'));
   document.querySelector('.ob-step[data-step="3s"]').appendChild(secCont);
+}
+
+/* ---------- Auth UI (signup / login) ---------- */
+let authMode = 'signup'; let authFrom = 'onboard';
+function openAuth(mode, from) {
+  authMode = mode || 'signup'; authFrom = from || 'onboard';
+  $('screen-auth').classList.add('active');
+  renderAuth();
+}
+function closeAuth() { $('screen-auth').classList.remove('active'); }
+function renderAuth() {
+  $('auth-title').textContent = authMode === 'signup' ? 'Create your free account ✨' : 'Welcome back! 👋';
+  $('auth-sub').textContent = authMode === 'signup'
+    ? 'Save your progress and sync across devices.'
+    : 'Log in to pick up where you left off.';
+  $('auth-name-row').classList.toggle('hidden', authMode !== 'signup');
+  $('auth-btn').textContent = authMode === 'signup' ? 'Create Account' : 'Log In';
+  $('auth-switch-line').innerHTML = authMode === 'signup'
+    ? 'Already have an account? <b id="auth-switch">Log in</b>'
+    : 'New here? <b id="auth-switch">Create account</b>';
+  $('auth-switch').addEventListener('click', () => { authMode = authMode === 'signup' ? 'login' : 'signup'; renderAuth(); });
+}
+async function submitAuth() {
+  const email = $('auth-email').value.trim();
+  const password = $('auth-password').value;
+  const name = $('auth-name').value.trim();
+  const btn = $('auth-btn');
+  if (!email || !password) { toast('Enter your email and password'); return; }
+  if (authMode === 'signup' && password.length < 6) { toast('Password must be at least 6 characters'); return; }
+  if (authMode === 'signup' && !name) { toast('Enter your name 😊'); return; }
+  btn.disabled = true; btn.textContent = 'Please wait...';
+  try {
+    if (authMode === 'signup') {
+      await fbSignup(name, email, password);
+      btn.disabled = false; $('auth-btn').textContent = 'Create Account';
+      closeAuth(); toast('🎉 Account created! Hi ' + name + '!');
+      if (authFrom === 'onboard') { obGo('2'); }
+      else { go('profile'); }
+    } else {
+      await fbLogin(email, password);
+      const restored = await syncDown();
+      btn.disabled = false; $('auth-btn').textContent = 'Log In';
+      closeAuth(); toast('👋 Welcome back!');
+      if (restored && profile && profile.subjects) {
+        $('screen-onboarding').classList.add('hidden');
+        $('app-main').classList.remove('hidden');
+        go('home');
+      } else if (authFrom === 'onboard') {
+        obGo('2');
+      } else { go('profile'); }
+    }
+  } catch (e) {
+    btn.disabled = false; $('auth-btn').textContent = authMode === 'signup' ? 'Create Account' : 'Log In';
+    const msg = (e.message || '').replace(/_/g, ' ').toLowerCase();
+    toast(msg.includes('password') ? 'Wrong email or password' : msg.includes('exists') ? 'This email already has an account' : 'Signup failed: ' + msg);
+  }
 }
 
 /* ---------- Home ---------- */
@@ -200,8 +369,88 @@ function renderHome() {
     `<div class="subject-card"><span class="sub-emoji">${SUB_EMOJI[s] || '📘'}</span>${s}</div>`).join('');
 }
 
-/* ---------- Tutor Chat ---------- */
+/* ---------- Voice: natural speech ---------- */
+let voices = [];
 let voiceOut = settings.voice;
+function loadVoices() {
+  if (!('speechSynthesis' in window)) return;
+  const all = speechSynthesis.getVoices();
+  voices = all.filter(v => (v.lang || '').toLowerCase().startsWith('en'));
+}
+if ('speechSynthesis' in window) {
+  loadVoices();
+  speechSynthesis.onvoiceschanged = loadVoices;
+  setTimeout(loadVoices, 600);
+}
+function pickNaturalVoice() {
+  const prefs = [
+    /natural/i, /neural/i, /premium/i, /enhanced/i,
+    /google us english/i, /samantha/i, /aria/i, /jenny/i, /ava/i,
+    /google uk english female/i, /zira/i
+  ];
+  for (const p of prefs) { const v = voices.find(x => p.test(x.name)); if (v) return v; }
+  return voices.find(v => /google/i.test(v.name)) || voices[0] || null;
+}
+function chosenVoice() {
+  if (settings.voiceURI) {
+    const v = voices.find(x => x.voiceURI === settings.voiceURI);
+    if (v) return v;
+  }
+  return pickNaturalVoice();
+}
+const stripEmoji = t => t.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, '');
+function speak(text) {
+  if (!voiceOut) return;
+  const clean = stripEmoji(text).slice(0, 600);
+  if (window.DivNative) { try { window.DivNative.speak(clean); return; } catch (e) {} }
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(clean);
+  const v = chosenVoice();
+  if (v) { u.voice = v; u.lang = v.lang; }
+  u.rate = settings.rate || 1.0; u.pitch = 1.05;
+  speechSynthesis.speak(u);
+}
+
+/* Voice picker */
+function openVoicePicker() {
+  $('voice-modal').classList.add('active');
+  renderVoiceList();
+}
+function renderVoiceList() {
+  const list = $('voice-list');
+  if (window.DivNative) {
+    list.innerHTML = `<div class="voice-row selected"><div><b>Android System Voice</b><small>Natural TTS engine on your phone</small></div><span>✓</span></div>`;
+  } else {
+    if (!voices.length) { list.innerHTML = '<p class="voice-empty">No system voices found yet — open the app again in a moment.</p>'; return; }
+    const current = settings.voiceURI || (pickNaturalVoice() || {}).voiceURI;
+    list.innerHTML = voices.map(v =>
+      `<div class="voice-row ${v.voiceURI === current ? 'selected' : ''}" data-vuri="${v.voiceURI}">
+         <div><b>${v.name}</b><small>${v.lang}</small></div>
+         <div class="voice-actions">
+           <button class="voice-prev" data-prev="${v.voiceURI}">▶</button>
+           ${v.voiceURI === current ? '<span>✓</span>' : ''}
+         </div>
+       </div>`).join('');
+    list.querySelectorAll('.voice-prev').forEach(b => b.addEventListener('click', ev => {
+      ev.stopPropagation();
+      const v = voices.find(x => x.voiceURI === b.dataset.prev);
+      if (v && 'speechSynthesis' in window) {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance("Hi! I'm DIV, your AI teacher. This is how I sound.");
+        u.voice = v; u.rate = settings.rate || 1.0; u.pitch = 1.05;
+        speechSynthesis.speak(u);
+      }
+    }));
+    list.querySelectorAll('.voice-row').forEach(r => r.addEventListener('click', () => {
+      settings.voiceURI = r.dataset.vuri; save();
+      renderVoiceList();
+      toast('✅ Voice selected');
+    }));
+  }
+}
+
+/* ---------- Tutor Chat ---------- */
 function addMsg(role, text) {
   const wrap = $('chat-messages');
   wrap.querySelector('.msg-welcome')?.remove();
@@ -210,16 +459,6 @@ function addMsg(role, text) {
   div.textContent = text;
   wrap.appendChild(div);
   wrap.scrollTop = wrap.scrollHeight;
-}
-function speak(text) {
-  if (!voiceOut || !('speechSynthesis' in window)) return;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text.replace(/[⚠️✅❌🔊🎙️📝📚🏆🌟💬😀😊🙂🔥⚡]/g, '').slice(0, 600));
-  u.rate = 1.02; u.pitch = 1.05;
-  const voices = speechSynthesis.getVoices();
-  const pref = voices.find(v => /Google UK English Female|Samantha|Google US English/i.test(v.name));
-  if (pref) u.voice = pref;
-  speechSynthesis.speak(u);
 }
 async function sendChat(text) {
   if (!text.trim()) return;
@@ -239,10 +478,22 @@ async function sendChat(text) {
     addMsg('bot', "😕 I couldn't reach the AI. Try again!");
   }
 }
-/* Voice input */
+/* Voice input (web + native bridge) */
 let recog = null, recognizing = false;
+function startVoiceInput() {
+  if (window.DivNative) { try { window.DivNative.startListening(); $('recording-badge').classList.remove('hidden'); } catch (e) {} return; }
+  if (!recog) { toast('Voice input not supported here — type instead'); return; }
+  if (recognizing) { recog.stop(); return; }
+  try { recog.start(); } catch (e) {}
+}
+window.__div_onNativeSpeech = t => {
+  $('recording-badge').classList.add('hidden');
+  if (t) { $('chat-input').value = t; setTimeout(() => sendChat(t), 300); }
+};
+window.__div_onNativeSpeechEnd = () => $('recording-badge').classList.add('hidden');
 function initVoice() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (window.DivNative) return; // native bridge handles it
   if (!SR) { $('mic-btn').style.display = 'none'; return; }
   recog = new SR();
   recog.lang = 'en-NG'; recog.interimResults = false; recog.maxAlternatives = 1;
@@ -254,7 +505,6 @@ function initVoice() {
     setTimeout(() => sendChat(text), 300);
   };
   recog.onerror = () => { recognizing = false; toast('Voice not available — type instead'); };
-  $('mic-btn').addEventListener('click', () => recognizing ? recog.stop() : recog.start());
 }
 
 /* ---------- Tests / Quiz ---------- */
@@ -271,6 +521,7 @@ function studentLevelLabel() {
 async function startQuiz(subject) {
   go('quiz');
   $('quiz-loading').classList.remove('hidden');
+  $('quiz-loading').querySelector('p').textContent = 'S.T.E.W AI is writing your quiz...';
   $('quiz-body').classList.add('hidden');
   $('quiz-result').classList.add('hidden');
   $('quiz-bar').style.width = '0%';
@@ -318,7 +569,7 @@ function answerQuiz(i, btn) {
     if (navigator.vibrate) navigator.vibrate(40);
   } else {
     btn.classList.add('wrong');
-    opts[q.answer ?? 0].classList.add('correct');
+    opts[ans].classList.add('correct');
     if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
   }
   const explain = document.createElement('div');
@@ -340,7 +591,7 @@ function showQuizResult(q, subject) {
   $('quiz-bar').style.width = '100%';
   if (!q) {
     res.innerHTML = `<img src="img/mascot-small.png" class="float"><h2>Oops!</h2>
-      <p>I had trouble building that quiz. Please try again.</p>
+      <p>S.T.E.W AI had trouble building that quiz. Please try again.</p>
       <button class="btn-chunky btn-primary" onclick="go('tests')">Back to Tests</button>`;
     return;
   }
@@ -360,6 +611,7 @@ function showQuizResult(q, subject) {
     <p>${msg}</p>
     ${bonus ? '<div class="xp-earned">+' + bonus + ' bonus XP 🎯</div>' : ''}
     <div class="xp-earned">+${quiz.score} XP ⚡</div>
+    <p class="stew-credit">✨ Quiz made with S.T.E.W AI</p>
     <button class="btn-chunky btn-primary" onclick="startQuiz('${subject}')">Take Another</button>
     <button class="btn-chunky btn-teal" onclick="go('tests')">Choose Subject</button>`;
 }
@@ -377,7 +629,7 @@ async function startAssignment(subject) {
   $('assign-subjects').classList.add('hidden');
   $('assign-body').classList.remove('hidden');
   $('assign-grade').classList.add('hidden');
-  $('assign-question').innerHTML = '<p><b>📝 DIV is writing your assignment...</b></p>';
+  $('assign-question').innerHTML = '<p><b>📝 S.T.E.W AI is writing your assignment...</b></p>';
   $('assign-answer').value = '';
   const prompt = `Give one clear, educational written assignment question for a ${studentLevelLabel()} on the subject "${subject}". It should require a short written answer of 1-3 paragraphs. Reply with ONLY the assignment question text, no numbering, no extra commentary.`;
   const q = await stewChat(prompt, 'div_assign');
@@ -403,7 +655,8 @@ async function submitAssignment() {
     <h3>📊 Your Grade</h3>
     <div class="assign-score">${score !== null ? score + '/10' : 'Graded'}</div>
     <p>${result.replace(/SCORE:.*\n?/i, '').replace(/FEEDBACK:/i, '')}</p>
-    <div class="xp-earned">+${15 + (score ? score * 2 : 0)} XP ⚡</div>`;
+    <div class="xp-earned">+${15 + (score ? score * 2 : 0)} XP ⚡</div>
+    <p class="stew-credit">✨ Graded by S.T.E.W AI</p>`;
   btn.disabled = false; btn.textContent = 'Submit for Grading';
   $('assign-grade').scrollIntoView({ behavior: 'smooth' });
 }
@@ -433,8 +686,43 @@ function renderProfile() {
   $('profile-subjects').innerHTML = p.subjects.map(s =>
     `<div class="chip-select selected">${SUB_EMOJI[s] || '📘'} ${s}</div>`).join('');
   $('set-voice').checked = settings.voice;
+  $('set-rate').value = settings.rate || 1.0;
+  $('rate-val').textContent = (settings.rate || 1.0).toFixed(1) + '×';
+  if (authUser) {
+    $('auth-card').innerHTML = `<div class="auth-line"><span class="auth-dot">✔</span> Signed in as <b>${authUser.email}</b></div>
+      <button id="logout-btn" class="btn-chunky btn-danger-outline">Log Out</button>`;
+    $('logout-btn').addEventListener('click', () => { fbLogout(); renderProfile(); });
+  } else {
+    $('auth-card').innerHTML = `<div class="auth-line"><span class="auth-dot">○</span> No account yet — your progress stays on this phone only.</div>
+      <button id="signup-btn2" class="btn-chunky btn-teal">Create Account / Log In</button>`;
+    $('signup-btn2').addEventListener('click', () => openAuth('signup', 'profile'));
+  }
 }
-$('set-voice').addEventListener('change', e => { settings.voice = e.target.checked; voiceOut = e.target.checked; save(); });
+
+/* ---------- Settings wiring ---------- */
+$('set-voice').addEventListener('change', e => {
+  settings.voice = e.target.checked; voiceOut = e.target.checked; save();
+  if (voiceOut) speak("Voice replies are on!");
+});
+$('set-rate').addEventListener('input', e => {
+  settings.rate = parseFloat(e.target.value);
+  $('rate-val').textContent = settings.rate.toFixed(1) + '×';
+  if (window.DivNative) { try { window.DivNative.setRate(settings.rate); } catch (err) {} }
+  save();
+});
+/* ---------- Auth wiring ---------- */
+$('auth-btn').addEventListener('click', submitAuth);
+$('auth-password').addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth(); });
+$('auth-skip').addEventListener('click', () => {
+  closeAuth();
+  if (authFrom === 'onboard') obGo('2');
+});
+
+$('voice-pick-btn').addEventListener('click', openVoicePicker);
+$('voice-modal-bg').addEventListener('click', closeVoiceModal);
+$('voice-modal-close').addEventListener('click', closeVoiceModal);
+function closeVoiceModal() { $('voice-modal').classList.remove('active'); }
+
 $('clear-data').addEventListener('click', () => {
   if (confirm('Clear all your DIV data? This cannot be undone.')) {
     localStorage.clear(); location.reload();
@@ -450,8 +738,6 @@ $('voice-toggle').addEventListener('click', () => {
   $('voice-toggle').textContent = voiceOut ? '🔊' : '🔇';
   toast(voiceOut ? 'Voice replies on' : 'Voice replies off');
 });
-
-/* ---------- Quiz quit ---------- */
 $('quiz-quit').addEventListener('click', () => go('tests'));
 
 /* ---------- Install prompt ---------- */
@@ -468,13 +754,18 @@ $('install-btn').addEventListener('click', async () => {
 /* ---------- Boot ---------- */
 (function boot() {
   wakeServer();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
-  if (profile) {
-    $('screen-onboarding').classList.add('hidden');
-    $('app-main').classList.remove('hidden');
-    go('home');
-  } else {
-    initOnboarding();
-  }
-  initVoice();
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+  const splashDone = () => {
+    $('splash').classList.add('hide');
+    setTimeout(() => $('splash').classList.add('hidden'), 450);
+    if (profile) {
+      $('screen-onboarding').classList.add('hidden');
+      $('app-main').classList.remove('hidden');
+      go('home');
+    } else {
+      initOnboarding();
+    }
+    initVoice();
+  };
+  setTimeout(splashDone, 1500);
 })();

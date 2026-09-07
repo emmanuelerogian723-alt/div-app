@@ -1,5 +1,5 @@
 /* DIV Service Worker — offline shell caching */
-const CACHE = 'div-app-v1';
+const CACHE = 'div-app-v2';
 const CORE = [
   './', './index.html', './css/styles.css', './js/app.js',
   './manifest.json', './img/mascot.png', './img/mascot-small.png',
