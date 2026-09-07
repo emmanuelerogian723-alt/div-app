@@ -478,3 +478,13 @@ input, textarea { font-family: inherit; }
 
 /* auth inline error */
 .auth-error { color: #DC2626; font-size: 13px; min-height: 18px; margin: 4px 0 8px; font-weight: 600; }
+
+/* ============ iOS INSTALL SHEET ============ */
+.ios-sheet-hero { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.mascot-ios-wrap { width: 84px; margin: 0 auto; }
+.ios-sheet-sub { font-size: .88rem; color: var(--ink-soft); text-align: center; margin: 6px 0 12px; }
+.ios-steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.ios-step { display: flex; gap: 12px; align-items: center; background: var(--purple-soft); border: 2px solid var(--purple-light); border-radius: 14px; padding: 10px 12px; font-size: .9rem; color: var(--ink); line-height: 1.35; }
+.ios-num { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: var(--purple); color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: .82rem; }
+.ios-share { display: inline-flex; width: 24px; height: 24px; border-radius: 7px; background: #fff; border: 1.5px solid var(--ink-faint); align-items: center; justify-content: center; font-size: .7rem; vertical-align: middle; }
+.ios-sheet-done { width: 100%; }

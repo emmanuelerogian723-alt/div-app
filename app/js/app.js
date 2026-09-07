@@ -880,16 +880,41 @@ $('voice-toggle').addEventListener('click', () => {
 });
 $('quiz-quit').addEventListener('click', () => go('tests'));
 
-/* ---------- Install prompt ---------- */
+/* ---------- Install prompt (Android native + iOS Home Screen guide) ---------- */
 let deferredPrompt = null;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+  || window.navigator.standalone === true;
+const forceIOS = new URLSearchParams(location.search).has('ios');
+
+function openIOSSheet() { $('ios-sheet').classList.add('active'); }
+function closeIOSSheet() { $('ios-sheet').classList.remove('active'); }
+$('ios-sheet-bg').addEventListener('click', closeIOSSheet);
+$('ios-sheet-close').addEventListener('click', closeIOSSheet);
+$('ios-sheet-done').addEventListener('click', closeIOSSheet);
+
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault(); deferredPrompt = e;
   $('install-btn').classList.remove('hidden');
 });
+
+// iOS Safari never fires beforeinstallprompt — show the button and guide manually
+if ((isIOS || forceIOS) && !isStandalone) $('install-btn').classList.remove('hidden');
+
 $('install-btn').addEventListener('click', async () => {
   if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; }
+  else if ((isIOS || forceIOS) && !isStandalone) openIOSSheet();
   else toast('Open browser menu → "Add to Home screen"');
 });
+
+/* ---------- iOS install nudge (once, iPhone only) ---------- */
+(function iosNudge() {
+  if ((isIOS || forceIOS) && !isStandalone && !localStorage.getItem('div-ios-nudge')) {
+    localStorage.setItem('div-ios-nudge', '1');
+    setTimeout(openIOSSheet, 1200);
+  }
+})();
 
 /* ---------- Boot ---------- */
 (function boot() {
@@ -945,7 +970,7 @@ function setMascotState(id, state) {
   if (state) owl.classList.add(state);
 }
 function initMascots() {
-  ['mascot-home', 'mascot-chat', 'mascot-auth', 'mascot-live', 'mascot-live-big'].forEach(id => {
+  ['mascot-home', 'mascot-chat', 'mascot-auth', 'mascot-live', 'mascot-live-big', 'mascot-ios'].forEach(id => {
     const el = $(id);
     if (el && !el.querySelector('.owl3d')) el.innerHTML = mascotSVG();
   });
