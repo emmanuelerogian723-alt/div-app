@@ -363,21 +363,14 @@ footer .f-logo { font-family:'Fredoka',sans-serif; font-weight:700; font-size:1.
     document.getElementById("count-ios").textContent = iosN.toLocaleString();
     if (totalEl) totalEl.textContent = (apkN + iosN).toLocaleString();
   }
-  // iPhone installs (tracked) — also a fallback for Android if GitHub is unreachable
+  // iPhone installs (tracked) + real APK download counts from GitHub (fetched server-side)
   fetch(FN, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action:"stats"})})
     .then(function(r){ return r.json(); })
     .then(function(d){
       iosN = (d.stats && d.stats.ios) || 0;
-      if (apkN === null) apkN = (d.stats && d.stats.apk) || 0;
+      var g = d.github;
+      apkN = (typeof g === "number") ? g : ((d.stats && d.stats.apk) || 0);
       paint();
-    }).catch(function(){});
-  // Real APK download counts straight from GitHub releases
-  fetch("https://api.github.com/repos/emmanuelerogian723-alt/div-app/releases")
-    .then(function(r){ return r.json(); })
-    .then(function(rel){
-      var n = 0;
-      (rel || []).forEach(function(x){ (x.assets || []).forEach(function(s){ if (s.name && s.name.slice(-4) === ".apk") n += s.download_count || 0; }); });
-      apkN = n; paint();
     }).catch(function(){});
 })();
 </script>
