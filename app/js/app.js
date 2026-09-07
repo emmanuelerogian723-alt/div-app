@@ -263,6 +263,7 @@ function initOnboarding() {
   document.querySelectorAll('.ob-next').forEach(btn => btn.addEventListener('click', () => {
     const goto = btn.dataset.goto;
     if (goto === 'finish') { finishOnboarding(); return; }
+    if (goto === 'auth') { openAuth('signup', 'onboard'); return; }
     if (goto === '4' && obLevel === 'university') {
       if (!$('uni-name').value.trim()) { toast('Please enter your university name'); return; }
       if (!$('matric-no').value.trim()) { toast('Please enter your matric or reg number'); return; }
