@@ -326,6 +326,7 @@ async function submitAuth() {
       await fbSignup(name, email, password);
       btn.disabled = false; $('auth-btn').textContent = 'Create Account';
       closeAuth(); toast('🎉 Account created! Hi ' + name + '!');
+      if (profile && profile.subjects) syncUp();
       if (authFrom === 'onboard') { obGo('2'); }
       else { go('profile'); }
     } else {
