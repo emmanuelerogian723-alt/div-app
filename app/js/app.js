@@ -215,6 +215,8 @@ function go(screen) {
   if (screen === 'progress') renderProgressUI();
   if (screen === 'profile') renderProfile();
   if (screen === 'library') renderLibrary();
+  if (screen === 'live') startLive();
+  if (screen !== 'live') endLive();
 }
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-go]');
@@ -324,12 +326,30 @@ async function submitAuth() {
   if (!email || !password) { toast('Enter your email and password'); return; }
   if (authMode === 'signup' && password.length < 6) { toast('Password must be at least 6 characters'); return; }
   if (authMode === 'signup' && !name) { toast('Enter your name 😊'); return; }
-  btn.disabled = true; btn.textContent = 'Please wait...';
+  const authErr = $('auth-error'); authErr.textContent = '';
+  btn.disabled = true; btn.textContent = 'Connecting… ⏳';
   try {
     if (authMode === 'signup') {
-      await fbSignup(name, email, password);
+      let ok = false, exists = false;
+      try {
+        await fbSignup(name, email, password); ok = true;
+      } catch (err) {
+        if ((err.message || '').includes('EMAIL_EXISTS')) exists = true; else throw err;
+      }
+      if (exists) {
+        btn.textContent = 'Signing you in…';
+        try { await fbLogin(email, password); ok = true; }
+        catch (err2) {
+          authMode = 'login'; renderAuth();
+          $('auth-error').textContent = 'That email already has an account. Enter your password to log in.';
+          toast('You already have an account — logging in instead');
+          btn.disabled = false; btn.textContent = 'Log In';
+          return;
+        }
+      }
+      if (!ok) throw new Error('could not create account');
       btn.disabled = false; $('auth-btn').textContent = 'Create Account';
-      closeAuth(); toast('🎉 Account created! Hi ' + name + '!');
+      closeAuth(); toast(exists ? '👋 Welcome back, ' + name + '!' : '🎉 Account created! Hi ' + name + '!');
       if (profile && profile.subjects) syncUp();
       if (authFrom === 'onboard') { obGo('2'); }
       else { go('profile'); }
@@ -348,8 +368,11 @@ async function submitAuth() {
     }
   } catch (e) {
     btn.disabled = false; $('auth-btn').textContent = authMode === 'signup' ? 'Create Account' : 'Log In';
-    const msg = (e.message || '').replace(/_/g, ' ').toLowerCase();
-    toast(msg.includes('password') ? 'Wrong email or password' : msg.includes('exists') ? 'This email already has an account' : 'Signup failed: ' + msg);
+    let msg = (e.message || '').replace(/_/g, ' ').toLowerCase();
+    if (msg.includes('fetch') || msg.includes('network')) msg = 'network problem — check your internet and try again';
+    if (msg.includes('password')) msg = 'wrong email or password';
+    $('auth-error').textContent = msg.charAt(0).toUpperCase() + msg.slice(1) + '.';
+    toast('Signup failed: ' + msg);
   }
 }
 
@@ -495,7 +518,9 @@ function startVoiceInput() {
 }
 window.__div_onNativeSpeech = t => {
   $('recording-badge').classList.add('hidden');
-  if (t) { $('chat-input').value = t; setTimeout(() => sendChat(t), 300); }
+  if (!t) return;
+  if (liveActive) { liveSend(t); return; }
+  $('chat-input').value = t; setTimeout(() => sendChat(t), 300);
 };
 window.__div_onNativeSpeechEnd = () => $('recording-badge').classList.add('hidden');
 function initVoice() {
@@ -508,6 +533,7 @@ function initVoice() {
   recog.onend = () => { recognizing = false; $('mic-btn').classList.remove('rec'); $('recording-badge').classList.add('hidden'); };
   recog.onresult = e => {
     const text = e.results[0][0].transcript;
+    if (liveActive) { liveSend(text); return; }
     $('chat-input').value = text;
     setTimeout(() => sendChat(text), 300);
   };
@@ -883,3 +909,176 @@ $('install-btn').addEventListener('click', async () => {
   };
   setTimeout(splashDone, 1500);
 })();
+
+/* ================= 3D ANIMATED MASCOT (Duolingo-style, everywhere) ================= */
+function mascotSVG() {
+  return `<div class="owl3d">
+  <svg viewBox="0 0 200 215" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="100" cy="206" rx="50" ry="8" fill="rgba(76,29,149,.25)"/>
+    <ellipse cx="100" cy="150" rx="60" ry="57" fill="#8B5CF6"/>
+    <ellipse cx="100" cy="163" rx="36" ry="33" fill="#EDE9FE"/>
+    <ellipse class="wing-l" cx="44" cy="152" rx="15" ry="33" fill="#7C3AED" transform="rotate(12 44 152)"/>
+    <ellipse class="wing-r" cx="156" cy="152" rx="15" ry="33" fill="#7C3AED" transform="rotate(-12 156 152)"/>
+    <circle cx="100" cy="95" r="52" fill="#8B5CF6"/>
+    <circle cx="100" cy="99" r="41" fill="#A78BFA"/>
+    <g class="eye"><circle cx="82" cy="92" r="15" fill="#fff"/><circle cx="82" cy="94" r="7" fill="#312E81"/><circle cx="85" cy="90" r="2.4" fill="#fff"/></g>
+    <g class="eye"><circle cx="118" cy="92" r="15" fill="#fff"/><circle cx="118" cy="94" r="7" fill="#312E81"/><circle cx="121" cy="90" r="2.4" fill="#fff"/></g>
+    <circle cx="64" cy="110" r="7" fill="#F472B6" opacity=".5"/>
+    <circle cx="136" cy="110" r="7" fill="#F472B6" opacity=".5"/>
+    <path class="beak" d="M92 112 Q100 109 108 112 L100 125 Z" fill="#F59E0B"/>
+    <ellipse class="mouth" cx="100" cy="118" rx="9" ry="5.5" fill="#92400E" style="display:none"/>
+    <g class="hat">
+      <path d="M62 63 L98 14 L140 60 Q100 48 62 63 Z" fill="#3B82F6"/>
+      <ellipse cx="102" cy="62" rx="47" ry="10" fill="#2563EB"/>
+      <path d="M98 14 L104 13 L102 22 Z" fill="#FDE68A"/>
+      <circle cx="112" cy="40" r="4" fill="#FDE68A"/>
+      <circle cx="90" cy="48" r="3" fill="#FDE68A"/>
+    </g>
+    <path d="M86 196 q-7 6 -12 5 M86 196 l0 9 M86 196 q7 6 12 5" stroke="#F59E0B" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <path d="M114 196 q-7 6 -12 5 M114 196 l0 9 M114 196 q7 6 12 5" stroke="#F59E0B" stroke-width="4" stroke-linecap="round" fill="none"/>
+  </svg></div>`;
+}
+function setMascotState(id, state) {
+  const wrap = $(id); if (!wrap) return;
+  const owl = wrap.querySelector('.owl3d'); if (!owl) return;
+  owl.classList.remove('talking', 'listening', 'thinking');
+  if (state) owl.classList.add(state);
+}
+function initMascots() {
+  ['mascot-home', 'mascot-chat', 'mascot-auth', 'mascot-live', 'mascot-live-big'].forEach(id => {
+    const el = $(id);
+    if (el && !el.querySelector('.owl3d')) el.innerHTML = mascotSVG();
+  });
+}
+initMascots();
+
+/* ================= LIVE TALK — VIDEO CALL WITH DIV ================= */
+let liveActive = false, liveStream = null, liveScene = '', liveVisionTimer = null, liveBusy = false;
+
+function liveCaption(html) { const c = $('live-caption'); c.innerHTML = html; c.scrollTop = c.scrollHeight; }
+
+async function requestCameraAccess() {
+  if (window.DivNative && window.DivNative.requestCamera) {
+    return new Promise(res => {
+      window.__div_onCameraPerm = ok => { window.__div_onCameraPerm = null; res(!!ok); };
+      try { window.DivNative.requestCamera(); } catch (e) { res(false); }
+      setTimeout(() => { if (window.__div_onCameraPerm) { window.__div_onCameraPerm = null; res(false); } }, 20000);
+    });
+  }
+  return true; // web: getUserMedia will prompt itself
+}
+
+async function startLive() {
+  if (liveActive) return;
+  liveActive = true;
+  initMascots();
+  setMascotState('mascot-live', 'listening');
+  setMascotState('mascot-live-big', 'listening');
+  $('live-state').textContent = 'listening…';
+  liveCaption('Tap the mic and talk to DIV — ask anything, show it anything!');
+  try {
+    const allowed = await requestCameraAccess();
+    if (allowed && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      liveStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 } }, audio: false });
+      $('live-video').srcObject = liveStream;
+      $('live-offline').classList.add('hidden');
+      $('live-vision-chip').classList.remove('hidden');
+      // Silent scene awareness every 20s — DIV quietly keeps up with what it sees
+      liveVisionTimer = setInterval(() => { if (!liveBusy) captureScene(false); }, 20000);
+    }
+  } catch (e) { /* audio-only call — fine */ }
+  toast('📹 Live with DIV — say hi!');
+}
+
+function endLive() {
+  if (!liveActive) return;
+  liveActive = false;
+  if (liveVisionTimer) { clearInterval(liveVisionTimer); liveVisionTimer = null; }
+  if (liveStream) { liveStream.getTracks().forEach(t => t.stop()); liveStream = null; }
+  $('live-video').srcObject = null;
+  $('live-offline').classList.remove('hidden');
+  $('live-vision-chip').classList.add('hidden');
+  if (window.speechSynthesis) speechSynthesis.cancel();
+}
+
+async function captureScene(withQuestion) {
+  if (!liveStream) { toast('Camera is off — DIV can\'t see 😅'); return ''; }
+  const vid = $('live-video');
+  try {
+    const cv = document.createElement('canvas');
+    const sc = Math.min(1, 480 / (vid.videoWidth || 480));
+    cv.width = (vid.videoWidth || 480) * sc; cv.height = (vid.videoHeight || 640) * sc;
+    cv.getContext('2d').drawImage(vid, 0, 0, cv.width, cv.height);
+    const dataURL = cv.toDataURL('image/jpeg', 0.72);
+    liveCaption(withQuestion ? '👁 <b>DIV:</b> Let me look…' : liveCaptionHTML());
+    const r = await fetch(STEW_API + '/api/vision', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image: dataURL,
+        prompt: withQuestion
+          ? 'You are DIV, a friendly AI tutor on a live video call with your student. ' + (typeof withQuestion === 'string' ? withQuestion : 'Describe what you see.') + ' Answer in 1-2 warm, short sentences as if speaking to the student directly.'
+          : 'You are DIV on a live video call. Describe what you see in the camera frame in one short sentence (this is context only, no greeting).',
+        detail: withQuestion ? 'detailed' : 'short'
+      })
+    });
+    const d = await r.json();
+    const desc = (d.description || '').trim();
+    if (desc) {
+      if (withQuestion) {
+        liveCaption('👁 <b>DIV:</b> ' + desc);
+        speakLive(desc);
+      } else { liveScene = desc; }
+    } else if (withQuestion) { liveCaption('👁 <b>DIV:</b> Hmm, I couldn\'t quite see that. Try again!'); }
+    return desc;
+  } catch (e) {
+    if (withQuestion) liveCaption('👁 <b>DIV:</b> My eyes blinked — check your connection and try again.');
+    return '';
+  }
+}
+function liveCaptionHTML() { return $('live-caption').innerHTML; }
+
+async function liveSend(text) {
+  if (!text.trim() || liveBusy) return;
+  liveBusy = true;
+  $('live-mic-btn').classList.remove('rec');
+  liveCaption('🗣 <b>You:</b> ' + text);
+  setMascotState('mascot-live', 'thinking');
+  $('live-state').textContent = 'thinking…';
+  try {
+    let scene = liveScene;
+    // If they're asking about what DIV sees, look right now with their question
+    if (liveStream && /(\bsee\b|\blook\b|\bshow|\bhold|\bwear|\bthis\b|\bthat\b|what am i|who am i)/i.test(text)) {
+      scene = await captureScene(text);
+    }
+    let ctx = studentContext();
+    if (scene) ctx += `[You are on a live video call with the student. You can see them through the camera. Current view: "${scene}". Speak naturally like a friendly tutor on a call — short warm replies.] `;
+    const reply = await stewChat(ctx + text, 'div_' + (profile.name || 'student'));
+    liveCaption('🦉 <b>DIV:</b> ' + reply);
+    speakLive(reply);
+  } catch (e) {
+    liveCaption('🦉 <b>DIV:</b> Connection hiccup — try again in a second!');
+  }
+  liveBusy = false;
+}
+
+function speakLive(text) {
+  setMascotState('mascot-live', 'talking');
+  setMascotState('mascot-live-big', 'talking');
+  $('live-state').textContent = 'talking…';
+  const words = (text.split(/\s+/).length) || 5;
+  const estMs = Math.min(30000, Math.max(1800, words * 380));
+  speak(text);
+  setTimeout(() => {
+    if (liveActive) { setMascotState('mascot-live', 'listening'); setMascotState('mascot-live-big', 'listening'); $('live-state').textContent = 'listening…'; }
+  }, estMs);
+}
+
+/* Live Talk wiring */
+$('live-mic-btn').addEventListener('click', () => {
+  const btn = $('live-mic-btn');
+  if (btn.classList.contains('rec')) { btn.classList.remove('rec'); startVoiceInput(); return; }
+  btn.classList.add('rec'); startVoiceInput();
+  setTimeout(() => btn.classList.remove('rec'), 9000);
+});
+$('live-eye-btn').addEventListener('click', () => { if (!liveBusy) captureScene('What do you see right now? Describe it.'); });
+$('live-end-btn').addEventListener('click', () => { endLive(); go('home'); toast('📞 Call ended'); });

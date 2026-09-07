@@ -113,7 +113,7 @@
 <!-- ============ AUTH (signup / login) ============ -->
 <div id="screen-auth" class="auth-overlay">
   <div class="auth-card">
-    <img src="img/mascot-small.png" class="auth-mascot float">
+    <div id="mascot-auth" class="mascot-svg mascot-auth-wrap"></div>
     <h2 id="auth-title">Create your free account ✨</h2>
     <p id="auth-sub" class="auth-sub">Save your progress and sync across devices.</p>
     <div class="form-group" id="auth-name-row">
@@ -128,6 +128,7 @@
       <label>Password</label>
       <input id="auth-password" type="password" placeholder="At least 6 characters" autocomplete="new-password">
     </div>
+    <p id="auth-error" class="auth-error"></p>
     <button id="auth-btn" class="btn-chunky btn-primary">Create Account</button>
     <p id="auth-switch-line" class="auth-switch-line">Already have an account? <b id="auth-switch">Log in</b></p>
     <button id="auth-skip" class="auth-skip">Continue without an account →</button>
@@ -148,7 +149,7 @@
         <h2 id="home-greeting">Hello!</h2>
         <p id="home-name">Ready to learn today?</p>
       </div>
-      <img src="img/mascot.png" class="home-mascot float" alt="DIV">
+      <div id="mascot-home" class="mascot-svg mascot-home-wrap" alt="DIV"></div>
     </div>
 
     <div class="daily-goal">
@@ -183,7 +184,7 @@
   <!-- TUTOR CHAT -->
   <div id="screen-tutor" class="screen">
     <div class="chat-header">
-      <img src="img/mascot-small.png" class="chat-mascot">
+      <div id="mascot-chat" class="mascot-svg mascot-chat-wrap"></div>
       <div><h3>DIV Tutor</h3><p id="chat-status">Online — always ready</p></div>
       <button id="voice-toggle" class="voice-toggle on" title="Voice replies">🔊</button>
     </div>
@@ -291,10 +292,36 @@
     <p class="version-note">DIV v2.0 · Powered by S.T.E.W AI 💜</p>
   </div>
 
+  <!-- ============ LIVE TALK (VIDEO CALL) ============ -->
+  <div id="screen-live" class="screen live-screen">
+    <div class="live-stage">
+      <video id="live-video" autoplay playsinline muted class="live-video"></video>
+      <div class="live-offline" id="live-offline">
+        <div id="mascot-live-big" class="mascot-svg mascot-live-big"></div>
+        <p>Camera is off — DIV can still hear you 🎧</p>
+      </div>
+      <div class="live-top-bar">
+        <span class="live-chip" id="live-status-chip">● Live with DIV</span>
+        <span class="live-chip live-vision-chip hidden" id="live-vision-chip">👁 DIV is watching</span>
+      </div>
+      <div class="live-caption" id="live-caption">Tap the mic and talk to DIV — ask anything, show it anything!</div>
+    </div>
+    <div class="live-div-row">
+      <div class="live-div-avatar"><div id="mascot-live" class="mascot-svg mascot-live-wrap"></div></div>
+      <div class="live-div-label"><b>DIV</b><span class="live-state" id="live-state">listening…</span></div>
+    </div>
+    <div class="live-controls">
+      <button id="live-eye-btn" class="live-btn live-btn-eye" title="What do you see?">👁</button>
+      <button id="live-mic-btn" class="live-btn live-btn-mic" title="Talk to DIV">🎤</button>
+      <button id="live-end-btn" class="live-btn live-btn-end" title="End call">📞</button>
+    </div>
+  </div>
+
   <!-- BOTTOM NAV -->
   <nav class="bottom-nav">
     <button class="nav-btn active" data-go="home"><span>🏠</span>Home</button>
     <button class="nav-btn" data-go="tutor"><span>💬</span>Tutor</button>
+    <button class="nav-btn" data-go="live"><span>📹</span>Live</button>
     <button class="nav-btn" data-go="tests"><span>📝</span>Tests</button>
     <button class="nav-btn" data-go="progress"><span>🏆</span>Progress</button>
     <button class="nav-btn" data-go="profile"><span>👤</span>Profile</button>
