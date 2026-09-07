@@ -129,6 +129,19 @@ footer .f-logo { font-family:'Fredoka',sans-serif; font-weight:700; font-size:1.
   .feat-grid, .steps { grid-template-columns:1fr; }
   .nav-links { display:none; }
 }
+
+/* ============ GET THE APP ============ */
+.getapp { padding:70px 0 30px; }
+.dl-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:22px; max-width:760px; margin:0 auto; }
+.dl-card { background:#fff; border:2px solid #EAE6F8; border-radius:26px; padding:30px 26px; text-align:center; box-shadow:0 10px 30px rgba(30,27,46,.06); }
+.dl-icon { font-size:2.4rem; margin-bottom:8px; }
+.dl-card h3 { font-size:1.25rem; margin-bottom:6px; }
+.dl-note { font-size:.92rem; color:var(--soft); font-weight:700; margin-bottom:18px; }
+.dl-meta { font-size:.82rem; color:var(--faint); font-weight:700; margin-top:12px; }
+.dl-counter-wrap { text-align:center; margin-top:26px; }
+.dl-counter { display:inline-block; background:#fff; border:2px solid #EAE6F8; border-radius:16px; padding:12px 20px; font-weight:800; color:var(--soft); font-size:.95rem; box-shadow:0 6px 18px rgba(30,27,46,.05); }
+.dl-counter b { color:var(--purple); }
+.dc-sep { color:var(--faint); margin:0 6px; }
 </style>
 </head>
 <body>
@@ -139,6 +152,7 @@ footer .f-logo { font-family:'Fredoka',sans-serif; font-weight:700; font-size:1.
     <div class="nav-links">
       <a href="#features">Features</a>
       <a href="#how">How it works</a>
+      <a href="#download">Download</a>
       <a href="app/">Open App</a>
     </div>
     <a href="app/" class="btn btn-cta">Open DIV →</a>
@@ -257,6 +271,43 @@ footer .f-logo { font-family:'Fredoka',sans-serif; font-weight:700; font-size:1.
 </section>
 
 
+
+<!-- ============ GET THE APP ============ -->
+<section class="getapp" id="download">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Take DIV everywhere. 📲</h2>
+      <p>Install DIV on your phone — Android or iPhone. Free, light, and works offline.</p>
+    </div>
+    <div class="dl-grid">
+      <div class="dl-card">
+        <div class="dl-icon">🤖</div>
+        <h3>DIV for Android</h3>
+        <p class="dl-note">Direct APK download — no Play Store needed.</p>
+        <a id="dl-android" href="https://github.com/emmanuelerogian723-alt/div-app/releases/download/v2.2/DIV-v2.2.apk" class="btn btn-cta">⬇️ Download APK</a>
+        <div class="dl-meta">v2.2 · ~1.2 MB · auto-updates</div>
+      </div>
+      <div class="dl-card">
+        <div class="dl-icon">🍎</div>
+        <h3>DIV for iPhone</h3>
+        <p class="dl-note">Install straight from Safari — no App Store needed.</p>
+        <a id="dl-ios" href="app/?ios=1" class="btn btn-cta">📲 Install on iPhone</a>
+        <div class="dl-meta">Home Screen install · takes 30 seconds</div>
+      </div>
+    </div>
+    <div class="dl-counter-wrap">
+      <div class="dl-counter">
+        <span class="dc-item">🤖 <b id="count-apk">…</b> Android downloads</span>
+        <span class="dc-sep">·</span>
+        <span class="dc-item">🍎 <b id="count-ios">…</b> iPhone installs</span>
+        <span class="dc-sep">·</span>
+        <span class="dc-item">🔥 <b id="count-total">…</b> total</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
 <section class="stew-sec" id="stew">
   <div class="wrap">
     <div class="stew-card">
@@ -294,5 +345,41 @@ footer .f-logo { font-family:'Fredoka',sans-serif; font-weight:700; font-size:1.
   © 2026 DIV Learning · Free forever for students · Made with S.T.E.W AI
 </footer>
 
+
+<script>
+(function(){
+  var FN = "https://solas-913e5e4f.base44.app/functions/divDownloadCounter";
+  function track(t){ try { fetch(FN, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action:"track", type:t})}); } catch(e){} }
+
+  var aBtn = document.getElementById("dl-android");
+  if (aBtn) aBtn.addEventListener("click", function(){ track("apk"); });
+  var iBtn = document.getElementById("dl-ios");
+  if (iBtn) iBtn.addEventListener("click", function(){ track("ios"); });
+
+  var apkN = null, iosN = null, totalEl = document.getElementById("count-total");
+  function paint(){
+    if (apkN === null || iosN === null) return;
+    document.getElementById("count-apk").textContent = apkN.toLocaleString();
+    document.getElementById("count-ios").textContent = iosN.toLocaleString();
+    if (totalEl) totalEl.textContent = (apkN + iosN).toLocaleString();
+  }
+  // iPhone installs (tracked) — also a fallback for Android if GitHub is unreachable
+  fetch(FN, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action:"stats"})})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      iosN = (d.stats && d.stats.ios) || 0;
+      if (apkN === null) apkN = (d.stats && d.stats.apk) || 0;
+      paint();
+    }).catch(function(){});
+  // Real APK download counts straight from GitHub releases
+  fetch("https://api.github.com/repos/emmanuelerogian723-alt/div-app/releases")
+    .then(function(r){ return r.json(); })
+    .then(function(rel){
+      var n = 0;
+      (rel || []).forEach(function(x){ (x.assets || []).forEach(function(s){ if (s.name && s.name.slice(-4) === ".apk") n += s.download_count || 0; }); });
+      apkN = n; paint();
+    }).catch(function(){});
+})();
+</script>
 </body>
 </html>
