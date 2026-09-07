@@ -354,3 +354,62 @@ input, textarea { font-family: inherit; }
 .settings-row { align-items: center; }
 .settings-row small { display: block; color: var(--ink-faint); font-size: .75rem; margin-top: 2px; }
 .voice-row small { font-weight: 700; }
+
+
+/* ---------- Study Library ---------- */
+.lib-home-card {
+  display: flex; align-items: center; gap: 14px; width: 100%;
+  background: #fff; border: 1.5px dashed #c4b5fd; border-radius: 16px;
+  padding: 14px 16px; margin-bottom: 18px; cursor: pointer;
+  box-shadow: 0 1px 4px rgba(124,58,237,.08); text-align: left;
+  font-family: inherit;
+}
+.lib-home-card:active { background: #faf5ff; }
+.lib-home-emoji { font-size: 28px; }
+.lib-home-text { flex: 1; display: flex; flex-direction: column; }
+.lib-home-text b { color: #1f2937; font-size: 15px; }
+.lib-home-text small { color: #6b7280; font-size: 12px; margin-top: 2px; }
+.lib-home-arrow { color: #7c3aed; font-weight: 700; }
+
+.upload-card {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: #fff; border: 2px dashed #a78bfa; border-radius: 18px;
+  padding: 26px 16px; cursor: pointer; text-align: center;
+  box-shadow: 0 2px 8px rgba(124,58,237,.10);
+}
+.upload-card:active { background: #faf5ff; }
+.upload-emoji { font-size: 38px; }
+.upload-card b { color: #1f2937; font-size: 16px; }
+.upload-card small { color: #6b7280; font-size: 12px; }
+
+.lib-progress { margin-top: 14px; }
+.lib-progress-track { height: 10px; border-radius: 99px; background: #ede9fe; overflow: hidden; }
+.lib-progress-fill { height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg,#7c3aed,#c026d3); transition: width .6s ease; }
+.lib-progress p { text-align: center; color: #6b7280; font-size: 13px; margin-top: 8px; }
+
+.lib-count-chip { font-size: 12px; color: #7c3aed; font-weight: 600; }
+.lib-empty { text-align: center; color: #9ca3af; font-size: 14px; line-height: 1.6; padding: 26px 10px; }
+.material-card { background: #fff; border-radius: 16px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 5px rgba(0,0,0,.06); }
+.material-head { display: flex; align-items: flex-start; gap: 10px; }
+.material-emoji { font-size: 26px; }
+.material-info { flex: 1; min-width: 0; }
+.material-info b { display: block; font-size: 14px; color: #1f2937; word-break: break-all; }
+.material-info small { color: #6b7280; font-size: 12px; line-height: 1.4; display: block; margin-top: 3px; }
+.material-del { border: none; background: none; color: #9ca3af; font-size: 15px; cursor: pointer; padding: 2px 6px; }
+.material-meta { display: flex; gap: 12px; margin: 10px 0; }
+.material-meta span { font-size: 11.5px; color: #7c3aed; background: #f3e8ff; border-radius: 99px; padding: 3px 9px; }
+.material-actions { display: flex; }
+.btn-ask-div {
+  flex: 1; border: none; border-radius: 12px; padding: 11px; cursor: pointer;
+  background: linear-gradient(90deg,#7c3aed,#a855f7); color: #fff;
+  font-size: 14px; font-weight: 700; font-family: inherit;
+}
+.btn-ask-div:active { opacity: .85; }
+
+/* Material chip in tutor chat */
+.mat-chip {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: #f3e8ff; color: #6d28d9; border-radius: 12px;
+  padding: 8px 12px; margin: 8px 12px 0; font-size: 12.5px; cursor: pointer;
+}
+.mat-chip-x { font-size: 14px; opacity: .7; }

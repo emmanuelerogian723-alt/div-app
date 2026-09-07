@@ -167,6 +167,13 @@
       <button class="qa-card qa-pink" data-go="progress"><span class="qa-emoji">🏆</span><span>Progress</span><small>Badges &amp; XP</small></button>
     </div>
 
+    <div class="section-head"><h3>Study Library</h3><button class="link-btn" data-go="library">Open</button></div>
+    <button class="lib-home-card" data-go="library">
+      <span class="lib-home-emoji">📚</span>
+      <span class="lib-home-text"><b>My Books &amp; Notes</b><small id="lib-count-home">Upload your books &amp; PDFs</small></span>
+      <span class="lib-home-arrow">→</span>
+    </button>
+
     <div class="section-head"><h3>Your Subjects</h3><button class="link-btn" data-go="profile">Edit</button></div>
     <div id="home-subjects" class="subject-grid"></div>
 
@@ -180,6 +187,7 @@
       <div><h3>DIV Tutor</h3><p id="chat-status">Online — always ready</p></div>
       <button id="voice-toggle" class="voice-toggle on" title="Voice replies">🔊</button>
     </div>
+    <div id="mat-chip" class="mat-chip hidden" onclick="clearMaterial()"><span>📖 Reading: <b id="mat-chip-name"></b></span><span class="mat-chip-x">✕</span></div>
     <div id="chat-messages" class="chat-messages">
       <div class="msg-welcome"><img src="img/mascot-small.png"><p>Hi! Ask me anything about your subjects — tap the mic to speak, or type your question.</p></div>
     </div>
@@ -190,6 +198,25 @@
       <button id="send-btn" class="send-btn">➤</button>
     </div>
     <div id="recording-badge" class="recording-badge hidden">🎙️ Listening... speak now</div>
+  </div>
+
+  <!-- STUDY LIBRARY -->
+  <div id="screen-library" class="screen">
+    <div class="tab-head"><h2>Study Library 📚</h2><p>Upload your books, PDFs &amp; class notes — S.T.E.W AI reads them, so DIV can teach you from your own materials.</p></div>
+    <label class="upload-card" for="lib-file" id="upload-card">
+      <input id="lib-file" type="file" accept=".pdf,application/pdf,image/png,image/jpeg,image/webp,image/bmp,image/gif" hidden>
+      <span class="upload-emoji">📤</span>
+      <b>Upload Book / PDF / Photo</b>
+      <small>PDF, PNG, JPG, WEBP &amp; more · up to 15MB</small>
+    </label>
+    <div id="lib-progress" class="lib-progress hidden">
+      <div class="lib-progress-track"><div id="lib-progress-fill" class="lib-progress-fill"></div></div>
+      <p id="lib-progress-text">Uploading...</p>
+    </div>
+    <div class="section-head" style="margin-top:18px"><h3>Your Materials</h3><span id="lib-count" class="lib-count-chip"></span></div>
+    <div id="lib-list"></div>
+    <div id="lib-empty" class="lib-empty">Nothing here yet 📗<br>Upload your first book, PDF or photo of your notes!</div>
+    <div class="stew-banner">✨ OCR &amp; content identification powered by <b>S.T.E.W AI</b></div>
   </div>
 
   <!-- TESTS -->

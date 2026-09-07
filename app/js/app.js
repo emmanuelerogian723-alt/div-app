@@ -41,6 +41,8 @@ let progress = JSON.parse(localStorage.getItem('div_progress') || 'null') || {
 };
 let settings = JSON.parse(localStorage.getItem('div_settings') || 'null') || { voice: true, voiceURI: null, rate: 1.0 };
 let authUser = JSON.parse(localStorage.getItem('div_auth') || 'null');
+let library = JSON.parse(localStorage.getItem('div_library') || '[]');
+let activeMaterial = null;
 
 let saveTimer = null;
 function save() {
@@ -212,6 +214,7 @@ function go(screen) {
   if (screen === 'assignments') renderAssignSubjects();
   if (screen === 'progress') renderProgressUI();
   if (screen === 'profile') renderProfile();
+  if (screen === 'library') renderLibrary();
 }
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-go]');
@@ -470,7 +473,9 @@ async function sendChat(text) {
   $('chat-status').textContent = 'Thinking...';
   progress.questions += 1; addXP(5);
   try {
-    const reply = await stewChat(studentContext() + text, 'div_' + (profile.name || 'student'));
+    let ctx = studentContext();
+    if (activeMaterial) ctx += `[The student uploaded study material "${activeMaterial.name}" (${activeMaterial.words} words). Its content: "${activeMaterial.text.slice(0, 8000)}". Base your answer on this material.] `;
+    const reply = await stewChat(ctx + text, 'div_' + (profile.name || 'student'));
     $('typing-row').classList.add('hidden');
     addMsg('bot', reply);
     speak(reply);
@@ -507,6 +512,113 @@ function initVoice() {
     setTimeout(() => sendChat(text), 300);
   };
   recog.onerror = () => { recognizing = false; toast('Voice not available — type instead'); };
+}
+
+/* ---------- Study Library (S.T.E.W OCR + AI identification) ---------- */
+const LIB_EXT_EMOJI = { pdf: '📕', png: '🖼️', jpg: '🖼️', jpeg: '🖼️', webp: '🖼️', bmp: '🖼️', gif: '🖼️' };
+function libExt(name) { const m = (name || '').toLowerCase().match(/\.([a-z0-9]+)$/); return m ? m[1] : ''; }
+
+async function uploadMaterial(file) {
+  if (!file) return;
+  if (file.size > 15 * 1024 * 1024) { toast('File too big — max 15MB'); return; }
+  const ext = libExt(file.name);
+  if (!LIB_EXT_EMOJI[ext]) { toast('Please upload a PDF or image file'); return; }
+
+  const card = $('upload-card'), prog = $('lib-progress'), fill = $('lib-progress-fill'), txt = $('lib-progress-text');
+  card.classList.add('hidden'); prog.classList.remove('hidden');
+  const step = (p, m) => { fill.style.width = p + '%'; txt.textContent = m; };
+
+  try {
+    // Step 1 — OCR: extract the text with S.T.E.W OCR engine
+    step(15, '📤 Uploading to S.T.E.W AI...');
+    const fd = new FormData();
+    fd.append('file', file); fd.append('lang', 'eng'); fd.append('include_confidence', 'false');
+    const r1 = await fetch(STEW_API + '/api/ocr', { method: 'POST', body: fd });
+    const d1 = await r1.json();
+    if (!d1.success) throw new Error(d1.detail || 'OCR failed');
+    const text = (d1.text || '').trim();
+    if (!text) { throw new Error('No readable text found — try a clearer photo or scan'); }
+    step(55, '📖 S.T.E.W AI is reading ' + (d1.page_count > 1 ? d1.page_count + ' pages...' : 'your material...'));
+
+    // Step 2 — AI identification: what is this material about?
+    const fd2 = new FormData();
+    fd2.append('file', file); fd2.append('task', 'analyze'); fd2.append('lang', 'eng');
+    const r2 = await fetch(STEW_API + '/api/ocr/analyze', { method: 'POST', body: fd2 });
+    const d2 = await r2.json();
+    step(85, '🧠 Identifying the subject...');
+
+    const analysis = ((d2.analysis || d2.result || d2.answer || '') + '').trim();
+    // First sentence of the analysis = the identified topic
+    const topic = analysis.replace(/[*#>\n]/g, ' ').split(/(?<=[.!?])\s+/)[0] || (text.slice(0, 60) + '...');
+    const material = {
+      id: Date.now(), name: file.name, ext: ext,
+      words: d1.word_count || text.split(/\s+/).length,
+      pages: d1.page_count || 1,
+      confidence: Math.round(d1.avg_confidence || 0),
+      topic: topic.slice(0, 140),
+      analysis: analysis.slice(0, 1200),
+      text: text.slice(0, 12000),
+      date: new Date().toISOString()
+    };
+    library.unshift(material);
+    localStorage.setItem('div_library', JSON.stringify(library));
+    step(100, '✅ Added to your library!');
+    addXP(15);
+    toast('📚 "' + material.name + '" added to your library!');
+    setTimeout(() => { prog.classList.add('hidden'); card.classList.remove('hidden'); renderLibrary(); }, 900);
+  } catch (e) {
+    prog.classList.add('hidden'); card.classList.remove('hidden');
+    toast('😕 ' + (e.message || "Couldn't read that file — try again"));
+  }
+}
+$('lib-file').addEventListener('change', e => { uploadMaterial(e.target.files[0]); e.target.value = ''; });
+
+function deleteMaterial(id) {
+  if (!confirm('Remove this material from your library?')) return;
+  library = library.filter(m => m.id !== id);
+  if (activeMaterial && activeMaterial.id === id) clearMaterial();
+  localStorage.setItem('div_library', JSON.stringify(library));
+  renderLibrary(); toast('🗑 Removed');
+}
+
+function askAboutMaterial(id) {
+  const m = library.find(x => x.id === id); if (!m) return;
+  activeMaterial = m;
+  go('tutor');
+  $('mat-chip').classList.remove('hidden');
+  $('mat-chip-name').textContent = m.name;
+  $('chat-input').placeholder = 'Ask DIV anything about this material...';
+  $('chat-status').textContent = 'Reading your material — ask away!';
+  toast('📖 Now ask DIV anything about "' + m.name + '"');
+}
+function clearMaterial() {
+  activeMaterial = null;
+  $('mat-chip').classList.add('hidden');
+  $('chat-input').placeholder = 'Ask me anything...';
+}
+
+function renderLibrary() {
+  const list = $('lib-list'), empty = $('lib-empty'), count = $('lib-count'), homeCount = $('lib-count-home');
+  if (homeCount) homeCount.textContent = library.length ? library.length + (library.length === 1 ? ' material' : ' materials') + ' uploaded' : 'Upload your books & PDFs';
+  count.textContent = library.length ? library.length : '';
+  list.innerHTML = library.map(m => `
+    <div class="material-card">
+      <div class="material-head">
+        <span class="material-emoji">${LIB_EXT_EMOJI[m.ext] || '📘'}</span>
+        <div class="material-info">
+          <b>${(m.name || 'Material').replace(/[<>]/g, '')}</b>
+          <small>${m.topic}</small>
+        </div>
+        <button class="material-del" onclick="deleteMaterial(${m.id})" title="Remove">✕</button>
+      </div>
+      <div class="material-meta">
+        <span>📄 ${m.pages} pg</span><span>🔤 ${m.words} words</span><span>🎯 ${m.confidence}% read</span>
+      </div>
+      <div class="material-actions">
+        <button class="btn-ask-div" onclick="askAboutMaterial(${m.id})">🤖 Ask DIV about this</button>
+      </div>
+    </div>`).join('');
+  empty.classList.toggle('hidden', library.length > 0);
 }
 
 /* ---------- Tests / Quiz ---------- */
