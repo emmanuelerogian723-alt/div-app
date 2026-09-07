@@ -349,7 +349,16 @@ footer .f-logo { font-family:'Fredoka',sans-serif; font-weight:700; font-size:1.
 <script>
 (function(){
   var FN = "https://solas-913e5e4f.base44.app/functions/divDownloadCounter";
-  function track(t){ try { fetch(FN, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action:"track", type:t})}); } catch(e){} }
+  function track(t){
+    try {
+      var body = JSON.stringify({action:"track", type:t});
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(FN, new Blob([body], {type:"application/json"}));
+      } else {
+        fetch(FN, {method:"POST", headers:{"Content-Type":"application/json"}, body:body, keepalive:true});
+      }
+    } catch(e){}
+  }
 
   var aBtn = document.getElementById("dl-android");
   if (aBtn) aBtn.addEventListener("click", function(){ track("apk"); });
