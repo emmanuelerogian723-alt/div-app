@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#7C3AED">
+<meta name="description" content="DIV — Your friendly AI teacher. Learn all subjects from secondary school to university with AI tutoring, tests, assignments and voice chat.">
+<title>DIV — Your AI Teacher</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DIV">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ============ ONBOARDING ============ -->
+<div id="screen-onboarding" class="screen active">
+  <div class="ob-steps">
+    <div class="ob-progress"><div id="ob-bar" class="ob-bar"></div></div>
+
+    <!-- Step 1: Welcome -->
+    <div class="ob-step active" data-step="1">
+      <div class="ob-hero">
+        <img src="img/mascot.png" alt="DIV mascot" class="ob-mascot float">
+        <h1>Hi! I'm <span class="grad-text">DIV</span> 👋</h1>
+        <p>Your pocket AI teacher. I can teach you <b>every subject</b>, give you tests &amp; assignments, and we can even talk with <b>voice</b>!</p>
+      </div>
+      <button class="btn-chunky btn-primary ob-next" data-goto="2">Let's Go! <span>→</span></button>
+      <p class="ob-skipnote">100% free. Powered by S.T.E.W AI.</p>
+    </div>
+
+    <!-- Step 2: Level -->
+    <div class="ob-step" data-step="2">
+      <div class="ob-head"><img src="img/mascot-small.png" class="ob-mini"><h2>What level are you?</h2></div>
+      <div class="level-cards">
+        <button class="level-card" data-level="secondary">
+          <div class="level-emoji">🏫</div>
+          <div class="level-title">Secondary School</div>
+          <div class="level-sub">JSS1 – SSS3</div>
+        </button>
+        <button class="level-card" data-level="university">
+          <div class="level-emoji">🎓</div>
+          <div class="level-title">University</div>
+          <div class="level-sub">Undergraduate</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 3a: University details -->
+    <div class="ob-step" data-step="3u">
+      <div class="ob-head"><img src="img/mascot-small.png" class="ob-mini"><h2>School details 🎓</h2></div>
+      <div class="form-group">
+        <label>University name</label>
+        <input id="uni-name" type="text" placeholder="e.g. University of Lagos" autocomplete="organization">
+      </div>
+      <div class="form-group">
+        <label>Matric number <span class="optional">or Reg number</span></label>
+        <input id="matric-no" type="text" placeholder="e.g. 2023/123456" autocomplete="off">
+      </div>
+      <button class="btn-chunky btn-primary ob-next" data-goto="4">Continue →</button>
+    </div>
+
+    <!-- Step 3b: Secondary details -->
+    <div class="ob-step" data-step="3s">
+      <div class="ob-head"><img src="img/mascot-small.png" class="ob-mini"><h2>Which class? 🏫</h2></div>
+      <div class="chips-grid">
+        <button class="chip-select" data-class="JSS 1">JSS 1</button>
+        <button class="chip-select" data-class="JSS 2">JSS 2</button>
+        <button class="chip-select" data-class="JSS 3">JSS 3</button>
+        <button class="chip-select" data-class="SSS 1">SSS 1</button>
+        <button class="chip-select" data-class="SSS 2">SSS 2</button>
+        <button class="chip-select" data-class="SSS 3">SSS 3</button>
+      </div>
+      <div class="form-group mt20">
+        <label>School name <span class="optional">optional</span></label>
+        <input id="sec-school" type="text" placeholder="Your school's name">
+      </div>
+    </div>
+
+    <!-- Step 4: Name -->
+    <div class="ob-step" data-step="4">
+      <div class="ob-head"><img src="img/mascot-small.png" class="ob-mini"><h2>What should I call you? 😊</h2></div>
+      <div class="form-group">
+        <input id="student-name" type="text" placeholder="Your first name" autocomplete="given-name">
+      </div>
+      <button class="btn-chunky btn-primary ob-next" data-goto="5">Continue →</button>
+    </div>
+
+    <!-- Step 5: Subjects -->
+    <div class="ob-step" data-step="5">
+      <div class="ob-head"><img src="img/mascot-small.png" class="ob-mini"><h2>Pick your subjects 📚</h2></div>
+      <p class="ob-sub">Choose at least 3 so I know what to teach you.</p>
+      <div id="ob-subjects" class="chips-grid"></div>
+      <button id="ob-finish" class="btn-chunky btn-primary ob-next" data-goto="finish" disabled>Start Learning →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<div id="app-main" class="app-main hidden">
+  <!-- HOME -->
+  <div id="screen-home" class="screen active">
+    <div class="home-hero">
+      <div class="home-stats">
+        <div class="stat-chip">🔥 <b id="stat-streak">0</b></div>
+        <div class="stat-chip">⚡ <b id="stat-xp">0</b> XP</div>
+      </div>
+      <div class="home-hello">
+        <h2 id="home-greeting">Hello!</h2>
+        <p id="home-name">Ready to learn today?</p>
+      </div>
+      <img src="img/mascot.png" class="home-mascot float" alt="DIV">
+    </div>
+
+    <div class="daily-goal">
+      <div class="goal-ring" id="goal-ring"><span id="goal-text">0%</span></div>
+      <div class="goal-info">
+        <h3>Daily Goal</h3>
+        <p id="goal-sub">Earn 50 XP today. <span id="goal-earned">0/50</span></p>
+      </div>
+    </div>
+
+    <div class="section-head"><h3>Quick Actions</h3></div>
+    <div class="qa-grid">
+      <button class="qa-card qa-purple" data-go="tutor"><span class="qa-emoji">💬</span><span>Ask DIV</span><small>Tutor chat</small></button>
+      <button class="qa-card qa-teal" data-go="tests"><span class="qa-emoji">📝</span><span>Take a Test</span><small>AI quiz</small></button>
+      <button class="qa-card qa-yellow" data-go="assignments"><span class="qa-emoji">📚</span><span>Assignment</span><small>Get graded</small></button>
+      <button class="qa-card qa-pink" data-go="progress"><span class="qa-emoji">🏆</span><span>Progress</span><small>Badges &amp; XP</small></button>
+    </div>
+
+    <div class="section-head"><h3>Your Subjects</h3><button class="link-btn" data-go="profile">Edit</button></div>
+    <div id="home-subjects" class="subject-grid"></div>
+  </div>
+
+  <!-- TUTOR CHAT -->
+  <div id="screen-tutor" class="screen">
+    <div class="chat-header">
+      <img src="img/mascot-small.png" class="chat-mascot">
+      <div><h3>DIV Tutor</h3><p id="chat-status">Online — always ready</p></div>
+      <button id="voice-toggle" class="voice-toggle on" title="Voice replies">🔊</button>
+    </div>
+    <div id="chat-messages" class="chat-messages">
+      <div class="msg-welcome"><img src="img/mascot-small.png"><p>Hi! Ask me anything about your subjects — tap the mic to speak, or type your question.</p></div>
+    </div>
+    <div id="typing-row" class="typing hidden"><span></span><span></span><span></span></div>
+    <div class="chat-input-row">
+      <button id="mic-btn" class="mic-btn" title="Hold to speak">🎙️</button>
+      <input id="chat-input" type="text" placeholder="Ask me anything..." autocomplete="off">
+      <button id="send-btn" class="send-btn">➤</button>
+    </div>
+    <div id="recording-badge" class="recording-badge hidden">🎙️ Listening... speak now</div>
+  </div>
+
+  <!-- TESTS -->
+  <div id="screen-tests" class="screen">
+    <div class="tab-head"><h2>Tests 📝</h2><p>Pick a subject — DIV will generate a fresh quiz just for you.</p></div>
+    <div id="tests-subjects" class="subject-grid"></div>
+  </div>
+
+  <!-- QUIZ (overlay) -->
+  <div id="screen-quiz" class="screen">
+    <div class="quiz-top">
+      <button id="quiz-quit" class="quiz-quit">✕</button>
+      <div class="quiz-progress"><div id="quiz-bar"></div></div>
+      <span id="quiz-count" class="quiz-count">1/5</span>
+    </div>
+    <div id="quiz-loading" class="quiz-loading">
+      <img src="img/mascot-small.png" class="float">
+      <p>DIV is writing your quiz...</p>
+      <div class="typing"><span></span><span></span><span></span></div>
+    </div>
+    <div id="quiz-body" class="hidden">
+      <div id="quiz-question" class="quiz-question"></div>
+      <div id="quiz-options" class="quiz-options"></div>
+    </div>
+    <div id="quiz-result" class="quiz-result hidden"></div>
+  </div>
+
+  <!-- ASSIGNMENTS -->
+  <div id="screen-assignments" class="screen">
+    <div class="tab-head"><h2>Assignments 📚</h2><p>Get an assignment, write your answer, DIV grades it.</p></div>
+    <div id="assign-subjects" class="subject-grid"></div>
+    <div id="assign-body" class="hidden">
+      <div id="assign-question" class="assign-question"></div>
+      <textarea id="assign-answer" class="assign-textarea" placeholder="Write your answer here..."></textarea>
+      <button id="assign-submit" class="btn-chunky btn-primary">Submit for Grading</button>
+      <div id="assign-grade" class="assign-grade hidden"></div>
+    </div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div id="screen-progress" class="screen">
+    <div class="tab-head"><h2>Progress 🏆</h2></div>
+    <div class="prog-cards">
+      <div class="prog-card"><span class="prog-big" id="prog-xp">0</span><span class="prog-label">Total XP</span></div>
+      <div class="prog-card"><span class="prog-big" id="prog-streak">0</span><span class="prog-label">Day Streak</span></div>
+      <div class="prog-card"><span class="prog-big" id="prog-tests">0</span><span class="prog-label">Tests Taken</span></div>
+    </div>
+    <div class="section-head"><h3>Badges</h3></div>
+    <div id="badge-grid" class="badge-grid"></div>
+    <div class="section-head"><h3>Subject Scores</h3></div>
+    <div id="subject-scores" class="score-list"></div>
+  </div>
+
+  <!-- PROFILE -->
+  <div id="screen-profile" class="screen">
+    <div class="tab-head"><h2>Profile 👤</h2></div>
+    <div class="profile-card">
+      <img src="img/mascot-small.png" class="profile-mascot">
+      <div id="profile-info"></div>
+    </div>
+    <div class="section-head"><h3>My Subjects</h3></div>
+    <div id="profile-subjects" class="chips-grid"></div>
+    <div class="section-head"><h3>Settings</h3></div>
+    <div class="settings-row"><span>🔊 Voice replies in chat</span><label class="switch"><input type="checkbox" id="set-voice" checked><span class="slider"></span></label></div>
+    <button id="install-btn" class="btn-chunky btn-teal hidden">📲 Install DIV App</button>
+    <button id="clear-data" class="btn-chunky btn-danger-outline">Clear All Data</button>
+    <p class="version-note">DIV v1.0 · Powered by S.T.E.W AI</p>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-go="home"><span>🏠</span>Home</button>
+    <button class="nav-btn" data-go="tutor"><span>💬</span>Tutor</button>
+    <button class="nav-btn" data-go="tests"><span>📝</span>Tests</button>
+    <button class="nav-btn" data-go="progress"><span>🏆</span>Progress</button>
+    <button class="nav-btn" data-go="profile"><span>👤</span>Profile</button>
+  </nav>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>

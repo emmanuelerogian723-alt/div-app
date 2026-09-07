@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DIV — Your AI Teacher | Learn Everything, Free</title>
+<meta name="description" content="DIV is a friendly AI tutor that teaches all subjects from secondary school to university, gives tests & assignments, and talks with you using voice. 100% free.">
+<link rel="icon" href="app/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --purple:#7C3AED; --purple-dark:#581C87; --purple-light:#EDE9FE;
+  --teal:#14B8A6; --yellow:#F59E0B; --pink:#EC4899; --green:#22C55E;
+  --ink:#1E1B2E; --soft:#4B4658; --faint:#9490A3; --bg:#FAF8FF;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { font-family:'Nunito',sans-serif; color:var(--ink); background:var(--bg); overflow-x:hidden; }
+h1,h2,h3,.fh { font-family:'Fredoka',sans-serif; }
+a { text-decoration:none; color:inherit; }
+.wrap { max-width:1120px; margin:0 auto; padding:0 24px; }
+
+/* NAV */
+nav { position:fixed; top:0; left:0; right:0; z-index:50; backdrop-filter:blur(14px); background:rgba(250,248,255,.82); border-bottom:1px solid #EAE6F8; }
+.nav-in { max-width:1120px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:14px 24px; }
+.logo { display:flex; align-items:center; gap:10px; font-family:'Fredoka',sans-serif; font-weight:700; font-size:1.3rem; }
+.logo img { width:38px; height:38px; border-radius:12px; }
+.nav-links { display:flex; gap:26px; font-weight:800; font-size:.92rem; color:var(--soft); }
+.nav-links a:hover { color:var(--purple); }
+.btn { display:inline-block; font-family:'Fredoka',sans-serif; font-weight:600; border-radius:16px; padding:12px 26px; font-size:1rem; transition:transform .1s; cursor:pointer; border:none; }
+.btn:active { transform:translateY(2px); }
+.btn-cta { background:var(--purple); color:#fff; box-shadow:0 5px 0 var(--purple-dark); }
+.btn-ghost { background:#fff; color:var(--purple); border:2px solid var(--purple); box-shadow:0 5px 0 var(--purple); }
+
+/* HERO */
+.hero { position:relative; padding:150px 0 40px; overflow:hidden; }
+.hero::before { content:''; position:absolute; top:-250px; left:50%; transform:translateX(-50%); width:1100px; height:800px; background:radial-gradient(closest-side, rgba(124,58,237,.14), transparent); border-radius:50%; }
+.hero-grid { display:grid; grid-template-columns:1.15fr .85fr; gap:40px; align-items:center; position:relative; }
+.badge-pill { display:inline-flex; align-items:center; gap:8px; background:var(--purple-light); color:var(--purple); font-weight:900; font-size:.85rem; padding:8px 16px; border-radius:999px; margin-bottom:20px; }
+.badge-pill .dot { width:8px; height:8px; border-radius:50%; background:var(--green); animation:blink 1.6s infinite; }
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+.hero h1 { font-size:clamp(2.5rem, 5.4vw, 4.2rem); font-weight:600; line-height:1.08; letter-spacing:-.01em; margin-bottom:20px; }
+.hero h1 em { font-style:normal; background:linear-gradient(90deg,var(--purple),var(--pink)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.hero p.lead { font-size:1.15rem; color:var(--soft); line-height:1.65; max-width:520px; margin-bottom:30px; font-weight:600; }
+.hero-btns { display:flex; gap:14px; flex-wrap:wrap; }
+.hero-meta { display:flex; gap:22px; margin-top:30px; flex-wrap:wrap; }
+.meta-item { display:flex; gap:9px; align-items:center; font-weight:800; font-size:.9rem; color:var(--soft); }
+
+/* PHONE MOCKUP */
+.phone-zone { display:flex; justify-content:center; }
+.phone {
+  width:300px; height:620px; border-radius:44px; background:#1E1B2E; padding:12px;
+  box-shadow:0 40px 80px rgba(124,58,237,.35), 0 12px 32px rgba(30,27,46,.25);
+  transform:rotate(6deg); transition:transform .5s;
+}
+.phone:hover { transform:rotate(0deg) scale(1.02); }
+.screen-in { width:100%; height:100%; border-radius:34px; background:var(--bg); overflow:hidden; position:relative; display:flex; flex-direction:column; }
+.m-notch { width:110px; height:22px; background:#1E1B2E; border-radius:0 0 14px 14px; margin:0 auto; flex-shrink:0; }
+.m-hero { background:linear-gradient(135deg,var(--purple),#9F67FF 60%,var(--pink)); padding:16px 14px 44px; color:#fff; position:relative; }
+.m-row { display:flex; gap:6px; margin-bottom:10px; }
+.m-chip { background:rgba(255,255,255,.24); border-radius:999px; padding:3px 10px; font-size:.68rem; font-weight:800; }
+.m-hero h3 { font-size:1.1rem; font-weight:600; }
+.m-hero img.m-mascot { position:absolute; right:-4px; bottom:-30px; width:88px; height:88px; object-fit:contain; filter:drop-shadow(0 8px 16px rgba(0,0,0,.3)); }
+.m-goal { background:#fff; margin:-28px 10px 10px; border-radius:16px; padding:10px 12px; display:flex; gap:10px; align-items:center; position:relative; z-index:2; box-shadow:0 6px 16px rgba(30,27,46,.08); }
+.m-ring { width:40px; height:40px; border-radius:50%; background:conic-gradient(var(--purple) 190deg, var(--purple-light) 0); display:flex; align-items:center; justify-content:center; font-size:.6rem; font-weight:900; color:var(--purple); position:relative; flex-shrink:0; }
+.m-ring::before { content:''; position:absolute; inset:4px; background:#fff; border-radius:50%; }
+.m-ring span { position:relative; }
+.m-goal b { font-size:.72rem; display:block; }
+.m-goal small { font-size:.62rem; color:var(--faint); font-weight:700; }
+.m-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:0 10px; }
+.m-card { border-radius:14px; padding:10px; color:#fff; font-size:.7rem; font-weight:800; display:flex; flex-direction:column; gap:1px; }
+.m-card i { font-style:normal; font-size:1rem; margin-bottom:2px; }
+.m-card small { font-weight:700; opacity:.85; font-size:.58rem; }
+.mp { background:var(--purple); } .mt { background:var(--teal); } .my { background:var(--yellow); } .mpk { background:var(--pink); }
+.m-subs { display:flex; gap:6px; padding:10px 10px 16px; }
+.m-sub { flex:1; background:#fff; border:1.5px solid #EAE6F8; border-radius:12px; padding:6px 2px; text-align:center; font-size:.55rem; font-weight:800; color:var(--soft); }
+.m-sub i { font-style:normal; display:block; font-size:.85rem; margin-bottom:1px; }
+.m-nav { margin-top:auto; background:#fff; border-top:1px solid #EAE6F8; display:flex; justify-content:space-around; padding:8px 4px 12px; }
+.m-nav span { font-size:.85rem; }
+
+/* SOCIAL PROOF */
+.marquee { overflow:hidden; padding:26px 0; border-top:1.5px solid #EAE6F8; border-bottom:1.5px solid #EAE6F8; background:#fff; }
+.marquee-track { display:flex; gap:38px; width:max-content; animation:scroll 24s linear infinite; }
+@keyframes scroll { to { transform:translateX(-50%); } }
+.marquee-track span { font-family:'Fredoka',sans-serif; font-weight:600; color:var(--faint); font-size:1.02rem; white-space:nowrap; }
+
+/* FEATURES */
+.features { padding:90px 0 40px; }
+.sec-head { text-align:center; max-width:640px; margin:0 auto 52px; }
+.sec-head h2 { font-size:clamp(1.9rem, 3.6vw, 2.7rem); font-weight:600; margin-bottom:12px; }
+.sec-head p { color:var(--soft); font-size:1.05rem; line-height:1.6; font-weight:600; }
+.feat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+.feat { background:#fff; border:1.5px solid #EAE6F8; border-radius:26px; padding:28px 24px; transition:transform .2s, box-shadow .2s; }
+.feat:hover { transform:translateY(-6px); box-shadow:0 20px 40px rgba(124,58,237,.12); }
+.feat .fi { width:54px; height:54px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:1.6rem; margin-bottom:16px; }
+.feat h3 { font-weight:600; font-size:1.2rem; margin-bottom:8px; }
+.feat p { color:var(--soft); font-size:.95rem; line-height:1.6; font-weight:600; }
+.f1 .fi { background:var(--purple-light); } .f2 .fi { background:#CCFBF1; } .f3 .fi { background:#FEF3C7; }
+.f4 .fi { background:#FCE7F3; } .f5 .fi { background:#DCFCE7; } .f6 .fi { background:var(--purple-light); }
+
+/* HOW */
+.how { padding:70px 0; }
+.steps { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+.step { text-align:center; padding:30px 20px; border-radius:26px; background:linear-gradient(180deg,#fff, var(--purple-light)); border:1.5px solid #EAE6F8; }
+.step .num { width:44px; height:44px; margin:0 auto 14px; border-radius:14px; background:var(--purple); color:#fff; font-family:'Fredoka',sans-serif; font-weight:600; font-size:1.2rem; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 0 var(--purple-dark); }
+.step h3 { font-weight:600; margin-bottom:6px; }
+.step p { color:var(--soft); font-size:.92rem; font-weight:600; line-height:1.55; }
+
+/* CTA */
+.cta { padding:90px 24px; }
+.cta-box { max-width:860px; margin:0 auto; background:linear-gradient(135deg,var(--purple),#9F67FF 55%,var(--pink)); border-radius:36px; padding:64px 40px; text-align:center; color:#fff; position:relative; overflow:hidden; box-shadow:0 30px 70px rgba(124,58,237,.35); }
+.cta-box::before { content:''; position:absolute; width:340px; height:340px; background:rgba(255,255,255,.12); border-radius:50%; top:-140px; right:-100px; }
+.cta-box::after { content:''; position:absolute; width:240px; height:240px; background:rgba(255,255,255,.10); border-radius:50%; bottom:-110px; left:-70px; }
+.cta-box h2 { font-size:clamp(1.9rem,4vw,2.8rem); font-weight:600; margin-bottom:14px; position:relative; z-index:1; }
+.cta-box p { font-size:1.08rem; opacity:.92; margin-bottom:30px; font-weight:700; position:relative; z-index:1; }
+.cta-box .btn-cta { background:#fff; color:var(--purple); box-shadow:0 5px 0 rgba(0,0,0,.2); font-size:1.1rem; padding:16px 40px; position:relative; z-index:1; }
+.free-note { display:inline-block; margin-top:16px; font-size:.85rem; font-weight:800; opacity:.85; position:relative; z-index:1; }
+
+footer { padding:44px 0 60px; text-align:center; color:var(--faint); font-weight:700; font-size:.9rem; }
+footer a { color:var(--purple); }
+footer .f-logo { font-family:'Fredoka',sans-serif; font-weight:700; font-size:1.2rem; color:var(--ink); display:block; margin-bottom:6px; }
+
+@media (max-width:880px) {
+  .hero-grid { grid-template-columns:1fr; text-align:center; }
+  .hero p.lead { margin:0 auto 30px; }
+  .hero-meta { justify-content:center; }
+  .phone { transform:none; margin:20px auto 0; }
+  .feat-grid, .steps { grid-template-columns:1fr; }
+  .nav-links { display:none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-in">
+    <a class="logo" href="#"><img src="app/icons/icon-192.png" alt="DIV"> DIV</a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="app/">Open App</a>
+    </div>
+    <a href="app/" class="btn btn-cta">Open DIV →</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="badge-pill"><span class="dot"></span> 100% FREE · POWERED BY S.T.E.W AI</div>
+      <h1>Meet <em>DIV</em>.<br>Your pocket AI teacher. 🧑‍🏫</h1>
+      <p class="lead">DIV teaches every subject — from JSS1 all the way to university — answers your questions with voice, and gives you AI-generated tests &amp; assignments that are graded instantly.</p>
+      <div class="hero-btns">
+        <a href="app/" class="btn btn-cta">📲 Open the App</a>
+        <a href="#how" class="btn btn-ghost">How it works</a>
+      </div>
+      <div class="hero-meta">
+        <div class="meta-item">✅ No fees, ever</div>
+        <div class="meta-item">🎙️ Voice to voice</div>
+        <div class="meta-item">📚 Every subject</div>
+      </div>
+    </div>
+    <div class="phone-zone">
+      <div class="phone">
+        <div class="screen-in">
+          <div class="m-notch"></div>
+          <div class="m-hero">
+            <div class="m-row"><span class="m-chip">🔥 7</span><span class="m-chip">⚡ 1,240 XP</span></div>
+            <h3 class="fh">Good morning!</h3>
+            <div style="font-size:.78rem;opacity:.9;font-weight:700">Ready to learn, Ada?</div>
+            <img class="m-mascot" src="app/img/mascot.png" alt="DIV mascot">
+          </div>
+          <div class="m-goal">
+            <div class="m-ring"><span>52%</span></div>
+            <div><b>Daily Goal</b><small>Earn 50 XP today · 26/50</small></div>
+          </div>
+          <div class="m-grid">
+            <div class="m-card mp"><i>💬</i>Ask DIV<small>Tutor chat</small></div>
+            <div class="m-card mt"><i>📝</i>Take a Test<small>AI quiz</small></div>
+            <div class="m-card my"><i>📚</i>Assignment<small>Get graded</small></div>
+            <div class="m-card mpk"><i>🏆</i>Progress<small>Badges &amp; XP</small></div>
+          </div>
+          <div class="m-subs">
+            <div class="m-sub"><i>➗</i>Maths</div>
+            <div class="m-sub"><i>🔬</i>Physics</div>
+            <div class="m-sub"><i>🌿</i>Biology</div>
+            <div class="m-sub"><i>📖</i>English</div>
+          </div>
+          <div class="m-nav"><span>🏠</span><span>💬</span><span>📝</span><span>🏆</span><span>👤</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="marquee">
+  <div class="marquee-track">
+    <span>➗ Mathematics</span><span>📖 English</span><span>🔬 Physics</span><span>⚗️ Chemistry</span><span>🌿 Biology</span><span>📈 Economics</span><span>🏛️ Government</span><span>📚 Literature</span><span>🗺️ Geography</span><span>💻 Computer Science</span><span>🧾 Accounting</span><span>📐 Further Maths</span>
+    <span>➗ Mathematics</span><span>📖 English</span><span>🔬 Physics</span><span>⚗️ Chemistry</span><span>🌿 Biology</span><span>📈 Economics</span><span>🏛️ Government</span><span>📚 Literature</span><span>🗺️ Geography</span><span>💻 Computer Science</span><span>🧾 Accounting</span><span>📐 Further Maths</span>
+  </div>
+</div>
+
+<section class="features" id="features">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Everything a great tutor does. 🎓</h2>
+      <p>DIV is built to teach like a patient, friendly teacher — one that never sleeps and knows every subject.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat f1">
+        <div class="fi">🧑‍🏫</div>
+        <h3>AI Tutor for Every Subject</h3>
+        <p>Ask any question from JSS1 to university level. DIV understands your class and explains at your level — step by step.</p>
+      </div>
+      <div class="feat f2">
+        <div class="fi">🎙️</div>
+        <h3>Voice to Voice Chat</h3>
+        <p>Tap the mic, ask your question by speaking, and DIV replies with a voice answer. Learning without typing.</p>
+      </div>
+      <div class="feat f3">
+        <div class="fi">📝</div>
+        <h3>Unlimited Tests &amp; Quizzes</h3>
+        <p>DIV generates fresh multiple-choice tests for your subjects, grades them instantly, and explains every answer.</p>
+      </div>
+      <div class="feat f4">
+        <div class="fi">📚</div>
+        <h3>Assignments, Graded</h3>
+        <p>Get real assignment questions, write your answer in the app, and receive a score with encouraging feedback.</p>
+      </div>
+      <div class="feat f5">
+        <div class="fi">🎓</div>
+        <h3>Built for Nigerian Students</h3>
+        <p>University students register with their school and matric/reg number. Secondary students pick their class — JSS1 to SSS3.</p>
+      </div>
+      <div class="feat f6">
+        <div class="fi">🏆</div>
+        <h3>XP, Streaks &amp; Badges</h3>
+        <p>Earn XP, keep your daily streak alive, and unlock badges. Learning that feels like a game — like Duolingo, but for school.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Start learning in 60 seconds ⏱️</h2>
+      <p>No sign-up fees. No subscriptions. Just open and learn.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="num">1</div><h3>Open DIV</h3><p>Tap "Open the App" — it works right in your browser. Install it to your home screen for the full app experience.</p></div>
+      <div class="step"><div class="num">2</div><h3>Tell DIV about you</h3><p>Pick your level — secondary or university — enter your details and choose your subjects.</p></div>
+      <div class="step"><div class="num">3</div><h3>Learn every day</h3><p>Chat with your tutor, take tests, submit assignments — and watch your XP grow. 🔥</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="cta-box">
+    <h2>Your teacher. Your pocket. Free. 💜</h2>
+    <p>Join DIV today — the friendliest AI tutor for secondary and university students.</p>
+    <a href="app/" class="btn btn-cta">Start Learning — It's Free</a>
+    <br><span class="free-note">Powered by S.T.E.W AI · Made with 💜 for students</span>
+  </div>
+</section>
+
+<footer>
+  <span class="f-logo">DIV</span>
+  Your AI teacher · Powered by <a href="https://stew-agent.onrender.com/">S.T.E.W AI</a><br><br>
+  © 2026 DIV Learning. Free forever for students.
+</footer>
+
+</body>
+</html>
