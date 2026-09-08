@@ -427,18 +427,66 @@ function chosenVoice() {
   return pickNaturalVoice();
 }
 const stripEmoji = t => t.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, '');
-function speak(text) {
+
+/* iOS Safari blocks audio playback unless it started from a real user tap.
+   We keep one shared <audio> element and "unlock" it on the first tap anywhere,
+   so later async speak() calls (after the AI reply arrives) can still play. */
+let ttsPlayer = null, audioUnlocked = false;
+function ensureTtsPlayer() {
+  if (!ttsPlayer) { ttsPlayer = new Audio(); ttsPlayer.setAttribute('playsinline', ''); }
+  return ttsPlayer;
+}
+function unlockAudio() {
+  if (audioUnlocked) return;
+  const p = ensureTtsPlayer();
+  // tiny silent wav — playing it inside a real tap event unlocks autoplay for this session
+  p.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+  p.play().then(() => { audioUnlocked = true; }).catch(() => {});
+}
+document.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
+document.addEventListener('click', unlockAudio, { once: true });
+
+let speakGen = 0; // cancels stale speech if a newer reply arrives first
+async function speak(text) {
   if (!voiceOut) return;
   const clean = stripEmoji(text).slice(0, 600);
+  if (!clean.trim()) return;
+  const myGen = ++speakGen;
   if (window.DivNative) { try { window.DivNative.speak(clean); return; } catch (e) {} }
-  if (!('speechSynthesis' in window)) return;
+
+  // Primary: real voice audio from S.T.E.W AI (reliable on iOS, sounds natural everywhere)
+  try {
+    const r = await fetch(STEW_API + '/api/tts', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: clean })
+    });
+    const d = await r.json();
+    if (myGen !== speakGen) return; // a newer message took over
+    if (d.success && d.audio_base64) {
+      const player = ensureTtsPlayer();
+      player.src = 'data:audio/' + (d.audio_format || 'mp3') + ';base64,' + d.audio_base64;
+      player.playbackRate = settings.rate || 1.0;
+      player.onended = () => onSpeakEnd(myGen);
+      await player.play().catch(() => speakFallbackBrowser(clean, myGen));
+      onSpeakStart(myGen);
+      return;
+    }
+  } catch (e) { /* fall through to browser TTS */ }
+  speakFallbackBrowser(clean, myGen);
+}
+function speakFallbackBrowser(clean, myGen) {
+  if (myGen !== speakGen || !('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(clean);
   const v = chosenVoice();
   if (v) { u.voice = v; u.lang = v.lang; }
   u.rate = settings.rate || 1.0; u.pitch = 1.05;
+  u.onstart = () => onSpeakStart(myGen);
+  u.onend = () => onSpeakEnd(myGen);
   speechSynthesis.speak(u);
 }
+function onSpeakStart(gen) { if (gen === speakGen && liveActive) { setMascotState('mascot-live', 'talking'); setMascotState('mascot-live-big', 'talking'); $('live-state').textContent = 'talking…'; } }
+function onSpeakEnd(gen) { if (gen === speakGen && liveActive) { setMascotState('mascot-live', 'listening'); setMascotState('mascot-live-big', 'listening'); $('live-state').textContent = 'listening…'; } }
 
 /* Voice picker */
 function openVoicePicker() {
@@ -508,58 +556,177 @@ async function sendChat(text) {
     addMsg('bot', "😕 I couldn't reach the AI. Try again!");
   }
 }
-/* Voice input (web + native bridge) */
+/* Voice input — native bridge (Android) > MediaRecorder + S.T.E.W Whisper (works on iOS Safari,
+   which has NO SpeechRecognition support at all) > Web Speech API (Chrome/Android web fallback) */
 let recog = null, recognizing = false;
-function startVoiceInput() {
-  if (window.DivNative) { try { window.DivNative.startListening(); $('recording-badge').classList.remove('hidden'); } catch (e) {} return; }
-  if (!recog) { toast('Voice input not supported here — type instead'); return; }
-  if (recognizing) { recog.stop(); return; }
-  try { recog.start(); } catch (e) {}
+let micRecorder = null, micChunks = [], micRecording = false;
+let voiceMode = 'none'; // 'native' | 'recorder' | 'webspeech' | 'none'
+
+function handleTranscript(text) {
+  if (!text || !text.trim()) { toast('😕 Didn\'t catch that — try again'); return; }
+  if (liveActive) { liveSend(text); return; }
+  $('chat-input').value = text; setTimeout(() => sendChat(text), 200);
 }
+
+async function startVoiceInput() {
+  unlockAudio();
+  if (voiceMode === 'native') { try { window.DivNative.startListening(); $('recording-badge').classList.remove('hidden'); } catch (e) {} return; }
+  if (voiceMode === 'recorder') { toggleMicRecorder(); return; }
+  if (voiceMode === 'webspeech') {
+    if (recognizing) { recog.stop(); return; }
+    try { recog.start(); } catch (e) {}
+    return;
+  }
+  toast('Voice input not supported here — type instead');
+}
+
+/* MediaRecorder path — works on iOS Safari, desktop Safari, and as a robust fallback everywhere */
+async function toggleMicRecorder() {
+  if (micRecording) { micRecorder.stop(); return; }
+  try {
+    const stream = liveStream && liveActive
+      ? new MediaStream(await navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getAudioTracks()))
+      : await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mime = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4'
+               : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+    micRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+    micChunks = [];
+    micRecorder.ondataavailable = e => { if (e.data && e.data.size) micChunks.push(e.data); };
+    micRecorder.onstart = () => { micRecording = true; setMicUI(true); };
+    micRecorder.onstop = async () => {
+      micRecording = false; setMicUI(false);
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(micChunks, { type: micRecorder.mimeType || 'audio/webm' });
+      if (blob.size < 800) { toast('Too short — hold and speak a bit longer'); return; }
+      await transcribeBlob(blob);
+    };
+    micRecorder.start();
+    toast('🎤 Listening… tap mic again to stop');
+    // Safety auto-stop after 45s so it never records forever
+    setTimeout(() => { if (micRecording && micRecorder) micRecorder.stop(); }, 45000);
+  } catch (e) {
+    toast('😕 Mic access denied — allow microphone permission and try again');
+  }
+}
+function setMicUI(active) {
+  $('mic-btn')?.classList.toggle('rec', active);
+  $('live-mic-btn')?.classList.toggle('rec', active);
+  $('recording-badge')?.classList.toggle('hidden', !active);
+}
+async function transcribeBlob(blob) {
+  $('chat-status') && ($('chat-status').textContent = 'Listening to you...');
+  if (liveActive) { $('live-state').textContent = 'hearing you…'; liveCaption('🎤 <i>transcribing…</i>'); }
+  try {
+    const fd = new FormData();
+    const ext = (blob.type || '').includes('mp4') ? 'audio.mp4' : 'audio.webm';
+    fd.append('file', blob, ext);
+    const r = await fetch(STEW_API + '/api/stt', { method: 'POST', body: fd });
+    const d = await r.json();
+    if ($('chat-status')) $('chat-status').textContent = 'Online — always ready';
+    if (d.success) handleTranscript(d.text);
+    else toast('😕 Could not hear that clearly — try again');
+  } catch (e) {
+    if ($('chat-status')) $('chat-status').textContent = 'Online — always ready';
+    toast('😕 Connection issue — check your internet and try again');
+  }
+}
+
 window.__div_onNativeSpeech = t => {
   $('recording-badge').classList.add('hidden');
-  if (!t) return;
-  if (liveActive) { liveSend(t); return; }
-  $('chat-input').value = t; setTimeout(() => sendChat(t), 300);
+  if (t) handleTranscript(t);
 };
 window.__div_onNativeSpeechEnd = () => $('recording-badge').classList.add('hidden');
+
 function initVoice() {
+  if (window.DivNative) { voiceMode = 'native'; return; }
+  const canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+  if (canRecord) { voiceMode = 'recorder'; return; } // preferred web path — works on iOS Safari too
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (window.DivNative) return; // native bridge handles it
-  if (!SR) { $('mic-btn').style.display = 'none'; return; }
-  recog = new SR();
-  recog.lang = 'en-NG'; recog.interimResults = false; recog.maxAlternatives = 1;
-  recog.onstart = () => { recognizing = true; $('mic-btn').classList.add('rec'); $('recording-badge').classList.remove('hidden'); };
-  recog.onend = () => { recognizing = false; $('mic-btn').classList.remove('rec'); $('recording-badge').classList.add('hidden'); };
-  recog.onresult = e => {
-    const text = e.results[0][0].transcript;
-    if (liveActive) { liveSend(text); return; }
-    $('chat-input').value = text;
-    setTimeout(() => sendChat(text), 300);
-  };
-  recog.onerror = () => { recognizing = false; toast('Voice not available — type instead'); };
+  if (SR) {
+    voiceMode = 'webspeech';
+    recog = new SR();
+    recog.lang = 'en-NG'; recog.interimResults = false; recog.maxAlternatives = 1;
+    recog.onstart = () => { recognizing = true; setMicUI(true); };
+    recog.onend = () => { recognizing = false; setMicUI(false); };
+    recog.onresult = e => handleTranscript(e.results[0][0].transcript);
+    recog.onerror = () => { recognizing = false; toast('Voice not available — type instead'); };
+    return;
+  }
+  voiceMode = 'none';
+  $('mic-btn') && ($('mic-btn').style.display = 'none');
 }
 
 /* ---------- Study Library (S.T.E.W OCR + AI identification) ---------- */
 const LIB_EXT_EMOJI = { pdf: '📕', png: '🖼️', jpg: '🖼️', jpeg: '🖼️', webp: '🖼️', bmp: '🖼️', gif: '🖼️' };
 function libExt(name) { const m = (name || '').toLowerCase().match(/\.([a-z0-9]+)$/); return m ? m[1] : ''; }
 
-async function uploadMaterial(file) {
-  if (!file) return;
-  if (file.size > 15 * 1024 * 1024) { toast('File too big — max 15MB'); return; }
+function fetchWithTimeout(url, opts, ms) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
+/* iPhone photos are HEIC by default. Most OCR engines can't read HEIC, so convert to JPEG
+   in-browser first — Safari can natively decode HEIC into an <img>/<canvas>, so this works
+   without any server support. Falls back to the original file if conversion isn't possible. */
+function convertHeicIfNeeded(file) {
   const ext = libExt(file.name);
-  if (!LIB_EXT_EMOJI[ext]) { toast('Please upload a PDF or image file'); return; }
+  if (ext !== 'heic' && ext !== 'heif' && file.type !== 'image/heic' && file.type !== 'image/heif') {
+    return Promise.resolve(file);
+  }
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    const cleanup = () => URL.revokeObjectURL(url);
+    img.onload = () => {
+      try {
+        const cv = document.createElement('canvas');
+        cv.width = img.naturalWidth || 1000; cv.height = img.naturalHeight || 1000;
+        cv.getContext('2d').drawImage(img, 0, 0);
+        cv.toBlob(blob => {
+          cleanup();
+          if (blob) resolve(new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' }));
+          else resolve(file);
+        }, 'image/jpeg', 0.9);
+      } catch (e) { cleanup(); resolve(file); }
+    };
+    img.onerror = () => { cleanup(); resolve(file); };
+    img.src = url;
+  });
+}
+
+async function uploadMaterial(rawFile) {
+  if (!rawFile) return;
+  if (rawFile.size > 15 * 1024 * 1024) { toast('File too big — max 15MB'); return; }
+  let ext = libExt(rawFile.name);
+  const isHeic = ext === 'heic' || ext === 'heif';
+  if (!LIB_EXT_EMOJI[ext] && !isHeic) { toast('Please upload a PDF or image file'); return; }
 
   const card = $('upload-card'), prog = $('lib-progress'), fill = $('lib-progress-fill'), txt = $('lib-progress-text');
   card.classList.add('hidden'); prog.classList.remove('hidden');
   const step = (p, m) => { fill.style.width = p + '%'; txt.textContent = m; };
 
   try {
+    let file = rawFile;
+    if (isHeic) {
+      step(8, '📷 Converting iPhone photo...');
+      file = await convertHeicIfNeeded(rawFile);
+      ext = libExt(file.name);
+    }
+
     // Step 1 — OCR: extract the text with S.T.E.W OCR engine
     step(15, '📤 Uploading to S.T.E.W AI...');
     const fd = new FormData();
     fd.append('file', file); fd.append('lang', 'eng'); fd.append('include_confidence', 'false');
-    const r1 = await fetch(STEW_API + '/api/ocr', { method: 'POST', body: fd });
+    let r1;
+    try {
+      r1 = await fetchWithTimeout(STEW_API + '/api/ocr', { method: 'POST', body: fd }, 70000);
+    } catch (e) {
+      throw new Error(e.name === 'AbortError'
+        ? "S.T.E.W AI is waking up — this can take a minute on the first try. Try again now."
+        : 'Network problem — check your internet and try again');
+    }
+    if (!r1.ok) throw new Error('S.T.E.W AI had trouble reading that file (error ' + r1.status + ')');
     const d1 = await r1.json();
     if (!d1.success) throw new Error(d1.detail || 'OCR failed');
     const text = (d1.text || '').trim();
@@ -569,8 +736,11 @@ async function uploadMaterial(file) {
     // Step 2 — AI identification: what is this material about?
     const fd2 = new FormData();
     fd2.append('file', file); fd2.append('task', 'analyze'); fd2.append('lang', 'eng');
-    const r2 = await fetch(STEW_API + '/api/ocr/analyze', { method: 'POST', body: fd2 });
-    const d2 = await r2.json();
+    let d2 = {};
+    try {
+      const r2 = await fetchWithTimeout(STEW_API + '/api/ocr/analyze', { method: 'POST', body: fd2 }, 70000);
+      d2 = await r2.json();
+    } catch (e) { /* analysis is a nice-to-have — fall back to using the raw text below */ }
     step(85, '🧠 Identifying the subject...');
 
     const analysis = ((d2.analysis || d2.result || d2.answer || '') + '').trim();
@@ -1102,23 +1272,15 @@ async function liveSend(text) {
 }
 
 function speakLive(text) {
-  setMascotState('mascot-live', 'talking');
-  setMascotState('mascot-live-big', 'talking');
-  $('live-state').textContent = 'talking…';
-  const words = (text.split(/\s+/).length) || 5;
-  const estMs = Math.min(30000, Math.max(1800, words * 380));
+  // onSpeakStart/onSpeakEnd (wired into speak()) now drive the talking/listening mascot state
+  // using the real audio's onended event, so it's always in sync — no more time-guessing.
   speak(text);
-  setTimeout(() => {
-    if (liveActive) { setMascotState('mascot-live', 'listening'); setMascotState('mascot-live-big', 'listening'); $('live-state').textContent = 'listening…'; }
-  }, estMs);
 }
 
-/* Live Talk wiring */
-$('live-mic-btn').addEventListener('click', () => {
-  const btn = $('live-mic-btn');
-  if (btn.classList.contains('rec')) { btn.classList.remove('rec'); startVoiceInput(); return; }
-  btn.classList.add('rec'); startVoiceInput();
-  setTimeout(() => btn.classList.remove('rec'), 9000);
-});
+/* Chat mic — was never wired up before; now works via native bridge / recorder / web speech */
+$('mic-btn')?.addEventListener('click', () => { unlockAudio(); startVoiceInput(); });
+
+/* Live Talk wiring — startVoiceInput() itself toggles start/stop and the 'rec' class via setMicUI() */
+$('live-mic-btn').addEventListener('click', () => { unlockAudio(); startVoiceInput(); });
 $('live-eye-btn').addEventListener('click', () => { if (!liveBusy) captureScene('What do you see right now? Describe it.'); });
 $('live-end-btn').addEventListener('click', () => { endLive(); go('home'); toast('📞 Call ended'); });
