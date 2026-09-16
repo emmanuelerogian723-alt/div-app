@@ -787,6 +787,75 @@ function askAboutMaterial(id) {
   $('chat-status').textContent = 'Reading your material — ask away!';
   toast('📖 Now ask DIV anything about "' + m.name + '"');
 }
+function startQuizFromMaterial(id) {
+  const m = library.find(x => x.id === id); if (!m) return;
+  if (!m.text) { toast('This material has no readable text to quiz on'); return; }
+  toast('📝 DIV is reading "' + m.name + '"...');
+  startQuiz(m.topic || m.name, id);
+}
+
+/* ---------- Flashcards (S.T.E.W AI) ---------- */
+let cards = null, cardIdx = 0, cardFlipped = false;
+async function startFlashcards(id) {
+  const m = library.find(x => x.id === id); if (!m) return;
+  if (!m.text) { toast('This material has no readable text for flashcards'); return; }
+  const ov = $('cards-overlay');
+  $('cards-front').textContent = 'S.T.E.W AI is making your flashcards...';
+  $('cards-back').textContent = '';
+  $('cards-count').textContent = '...';
+  ov.classList.remove('hidden');
+  cards = null; cardIdx = 0; cardFlipped = false;
+  const body = (m.text || '').slice(0, 9000);
+  const prompt = `A ${studentLevelLabel()} uploaded this study material: "${m.name}". Based ONLY on the actual content below, create exactly 8 flashcards for revision. Reply with ONLY valid JSON, no markdown, exactly: {"cards":[{"front":"a short question or key term","back":"a clear concise answer, max 25 words"}]}. Cover the most important concepts in THIS material.\n\nMATERIAL CONTENT:\n${body}`;
+  const raw = await stewChat(prompt, 'div_cards');
+  let list = null;
+  try {
+    const mt = raw.match(/\{[\s\S]*\}/);
+    if (mt) {
+      const parsed = JSON.parse(mt[0]);
+      list = (parsed.cards || []).filter(x => x.front && x.back);
+    }
+  } catch (e) {}
+  if (!list || list.length < 3) {
+    $('cards-front').textContent = "S.T.E.W AI couldn't build cards from this — try again!";
+    $('cards-back').textContent = '';
+    return;
+  }
+  cards = list;
+  addXP(10);
+  renderCard();
+}
+function renderCard() {
+  if (!cards) return;
+  cardIdx = Math.max(0, Math.min(cardIdx, cards.length - 1));
+  const fc = $('cards-inner');
+  fc.classList.remove('flipped');
+  cardFlipped = false;
+  setTimeout(() => {
+    $('cards-front').textContent = cards[cardIdx].front;
+    $('cards-back').textContent = cards[cardIdx].back;
+  }, 180);
+  $('cards-count').textContent = (cardIdx + 1) + ' / ' + cards.length;
+}
+function flipCard() {
+  if (!cards) return;
+  cardFlipped = !cardFlipped;
+  $('cards-inner').classList.toggle('flipped', cardFlipped);
+}
+function nextCard(d) {
+  if (!cards) return;
+  if (d > 0 && !cardFlipped) { flipCard(); return; } // must see the answer before moving on
+  cardIdx += d;
+  if (cardIdx >= cards.length) {
+    $('cards-overlay').classList.add('hidden');
+    toast('🃏 Deck finished — +10 XP! Revising like a pro!');
+    cards = null;
+    return;
+  }
+  renderCard();
+}
+function closeCards() { $('cards-overlay').classList.add('hidden'); cards = null; }
+
 function clearMaterial() {
   activeMaterial = null;
   $('mat-chip').classList.add('hidden');
@@ -811,7 +880,9 @@ function renderLibrary() {
         <span>📄 ${m.pages} pg</span><span>🔤 ${m.words} words</span><span>🎯 ${m.confidence}% read</span>
       </div>
       <div class="material-actions">
-        <button class="btn-ask-div" onclick="askAboutMaterial(${m.id})">🤖 Ask DIV about this</button>
+        <button class="btn-ask-div" onclick="askAboutMaterial(${m.id})">🤖 Ask DIV</button>
+        <button class="btn-ask-div" onclick="startQuizFromMaterial(${m.id})" title="Generate a quiz from this material">📝 Quiz me</button>
+        <button class="btn-ask-div" onclick="startFlashcards(${m.id})" title="Flip-card practice from this material">🃏 Flashcards</button>
       </div>
     </div>`).join('');
   empty.classList.toggle('hidden', library.length > 0);
@@ -828,14 +899,27 @@ function renderTestSubjects() {
 function studentLevelLabel() {
   return profile.level === 'university' ? `university student of ${profile.uni}` : `${profile.class} secondary school student`;
 }
-async function startQuiz(subject) {
+async function startQuiz(subject, materialId) {
   go('quiz');
   $('quiz-loading').classList.remove('hidden');
-  $('quiz-loading').querySelector('p').textContent = 'S.T.E.W AI is writing your quiz...';
+  let mat = null;
+  if (materialId) {
+    mat = library.find(x => x.id === materialId);
+    if (!mat) { showQuizResult(null, subject); return; }
+    $('quiz-loading').querySelector('p').textContent = 'S.T.E.W AI is reading "' + mat.name + '" and writing your quiz...';
+  } else {
+    $('quiz-loading').querySelector('p').textContent = 'S.T.E.W AI is writing your quiz...';
+  }
   $('quiz-body').classList.add('hidden');
   $('quiz-result').classList.add('hidden');
   $('quiz-bar').style.width = '0%';
-  const prompt = `Generate a 5-question multiple choice quiz for a ${studentLevelLabel()} on the subject "${subject}". Use clear questions with 4 options each. Vary difficulty (2 easy, 2 medium, 1 hard). Reply with ONLY valid JSON, no markdown, no extra text, exactly in this format: {"questions":[{"q":"question","options":["A","B","C","D"],"answer":0,"explain":"short explanation"}]} where "answer" is the 0-based index of the correct option.`;
+  let prompt;
+  if (mat) {
+    const body = (mat.text || '').slice(0, 9000);
+    prompt = `A ${studentLevelLabel()} uploaded this study material: "${mat.name}". Based ONLY on the actual content below, generate a 6-question multiple choice quiz that tests real understanding of THIS material. Use clear questions with 4 options each. Vary difficulty (2 easy, 3 medium, 1 hard). Reply with ONLY valid JSON, no markdown, no extra text, exactly: {"questions":[{"q":"question","options":["A","B","C","D"],"answer":0,"explain":"short explanation"}]} where "answer" is the 0-based index of the correct option.\n\nMATERIAL CONTENT:\n${body}`;
+  } else {
+    prompt = `Generate a 5-question multiple choice quiz for a ${studentLevelLabel()} on the subject "${subject}". Use clear questions with 4 options each. Vary difficulty (2 easy, 2 medium, 1 hard). Reply with ONLY valid JSON, no markdown, no extra text, exactly in this format: {"questions":[{"q":"question","options":["A","B","C","D"],"answer":0,"explain":"short explanation"}]} where "answer" is the 0-based index of the correct option.`;
+  }
   const raw = await stewChat(prompt, 'div_quiz');
   let questions = null;
   try {
@@ -849,7 +933,7 @@ async function startQuiz(subject) {
     showQuizResult(null, subject);
     return;
   }
-  quiz = { subject, questions, idx: 0, score: 0 };
+  quiz = { subject: mat ? (mat.topic || mat.name) : subject, material: mat ? mat.name : null, matId: mat ? mat.id : null, questions, idx: 0, score: 0 };
   $('quiz-loading').classList.add('hidden');
   $('quiz-body').classList.remove('hidden');
   renderQuizQuestion();
@@ -922,8 +1006,8 @@ function showQuizResult(q, subject) {
     ${bonus ? '<div class="xp-earned">+' + bonus + ' bonus XP 🎯</div>' : ''}
     <div class="xp-earned">+${quiz.score} XP ⚡</div>
     <p class="stew-credit">✨ Quiz made with S.T.E.W AI</p>
-    <button class="btn-chunky btn-primary" onclick="startQuiz('${subject}')">Take Another</button>
-    <button class="btn-chunky btn-teal" onclick="go('tests')">Choose Subject</button>`;
+    <button class="btn-chunky btn-primary" onclick="startQuiz('${subject}', ${quiz.matId ? quiz.matId : 'null'})">Take Another</button>
+    <button class="btn-chunky btn-teal" onclick="go('${quiz.material ? 'library' : 'tests'}')">${quiz.material ? 'Back to Library' : 'Choose Subject'}</button>`;
 }
 
 /* ---------- Assignments ---------- */
@@ -1164,6 +1248,7 @@ initMascots();
 
 /* ================= LIVE TALK — VIDEO CALL WITH DIV ================= */
 let liveActive = false, liveStream = null, liveScene = '', liveVisionTimer = null, liveBusy = false;
+let liveLesson = null; // { subject, turn } — set when DIV is actively teaching a subject on the call
 
 function liveCaption(html) { const c = $('live-caption'); c.innerHTML = html; c.scrollTop = c.scrollHeight; }
 
@@ -1185,7 +1270,7 @@ async function startLive() {
   setMascotState('mascot-live', 'listening');
   setMascotState('mascot-live-big', 'listening');
   $('live-state').textContent = 'listening…';
-  liveCaption('Tap the mic and talk to DIV — ask anything, show it anything!');
+  liveCaption('Tap the mic and talk to DIV — ask anything, or say <b>teach me biology</b> to start a lesson!');
   try {
     const allowed = await requestCameraAccess();
     if (allowed && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -1205,6 +1290,7 @@ function endLive() {
   liveActive = false;
   if (liveVisionTimer) { clearInterval(liveVisionTimer); liveVisionTimer = null; }
   if (liveStream) { liveStream.getTracks().forEach(t => t.stop()); liveStream = null; }
+  clearLesson();
   $('live-video').srcObject = null;
   $('live-offline').classList.remove('hidden');
   $('live-vision-chip').classList.add('hidden');
@@ -1247,6 +1333,27 @@ async function captureScene(withQuestion) {
 }
 function liveCaptionHTML() { return $('live-caption').innerHTML; }
 
+/* Detect "teach me X" style intent and start a structured lesson on the call */
+function parseLessonIntent(text) {
+  const m = text.match(/\b(?:teach|tutor|explain|help me (?:learn|understand)|i want to learn|i want to understand|can you teach|let'?s learn)\b[^a-z0-9]*(?:me\s+)?(?:about\s+|on\s+)?([a-z0-9 ,&+\-']{2,60})/i);
+  if (m) return m[1].replace(/\s+(please|now|today|step by step)\b.*$/i, '').trim();
+  return null;
+}
+function startLesson(subject) {
+  liveLesson = { subject, turn: 0 };
+  const chip = $('live-status-chip');
+  chip.textContent = '📚 Teaching: ' + subject.slice(0, 24);
+  chip.classList.add('lesson-on');
+  liveCaption('📖 <b>DIV:</b> Great choice! Starting your lesson on <b>' + subject + '</b> — tap the mic and say "start" or ask your first question!');
+}
+function clearLesson() {
+  if (!liveLesson) return;
+  liveLesson = null;
+  const chip = $('live-status-chip');
+  chip.textContent = '● Live with DIV';
+  chip.classList.remove('lesson-on');
+}
+
 async function liveSend(text) {
   if (!text.trim() || liveBusy) return;
   liveBusy = true;
@@ -1262,6 +1369,17 @@ async function liveSend(text) {
     }
     let ctx = studentContext();
     if (scene) ctx += `[You are on a live video call with the student. You can see them through the camera. Current view: "${scene}". Speak naturally like a friendly tutor on a call — short warm replies.] `;
+
+    const wantsSubject = parseLessonIntent(text);
+    if (wantsSubject && (!liveLesson || liveLesson.subject.toLowerCase() !== wantsSubject.toLowerCase())) {
+      startLesson(wantsSubject);
+    }
+    if (liveLesson) {
+      liveLesson.turn += 1;
+      ctx += `[LESSON MODE — you are actively teaching "${liveLesson.subject}" live on a voice call, lesson turn ${liveLesson.turn}. Teach it properly: break the subject into small steps, explain ONE step per turn in simple language with a quick example, then end EVERY reply with a short question that checks understanding or moves the lesson forward. If they answer correctly, praise them briefly and continue to the next step. If they struggle, simplify and re-explain differently. If they say "stop", "quiz me" or change topic, wrap up with a 1-sentence recap and obey. CRITICAL: this is spoken aloud — max 70 words per reply, no lists, no markdown, no asterisks, just natural speech.] `;
+    } else {
+      ctx += `[This is a live VOICE call — keep replies short and natural (max 3 sentences) unless they explicitly ask for depth.] `;
+    }
     const reply = await stewChat(ctx + text, 'div_' + (profile.name || 'student'));
     liveCaption('🦉 <b>DIV:</b> ' + reply);
     speakLive(reply);

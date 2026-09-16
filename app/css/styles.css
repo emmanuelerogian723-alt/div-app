@@ -398,7 +398,7 @@ input, textarea { font-family: inherit; }
 .material-del { border: none; background: none; color: #9ca3af; font-size: 15px; cursor: pointer; padding: 2px 6px; }
 .material-meta { display: flex; gap: 12px; margin: 10px 0; }
 .material-meta span { font-size: 11.5px; color: #7c3aed; background: #f3e8ff; border-radius: 99px; padding: 3px 9px; }
-.material-actions { display: flex; }
+.material-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .btn-ask-div {
   flex: 1; border: none; border-radius: 12px; padding: 11px; cursor: pointer;
   background: linear-gradient(90deg,#7c3aed,#a855f7); color: #fff;
@@ -488,3 +488,19 @@ input, textarea { font-family: inherit; }
 .ios-num { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: var(--purple); color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: .82rem; }
 .ios-share { display: inline-flex; width: 24px; height: 24px; border-radius: 7px; background: #fff; border: 1.5px solid var(--ink-faint); align-items: center; justify-content: center; font-size: .7rem; vertical-align: middle; }
 .ios-sheet-done { width: 100%; }
+
+/* ---------- Flashcards ---------- */
+.cards-overlay{position:fixed;inset:0;background:rgba(30,10,60,.92);backdrop-filter:blur(6px);z-index:900;display:flex;flex-direction:column;padding:18px;overflow-y:auto}
+.cards-head{display:flex;justify-content:space-between;align-items:center;color:#fff;margin-bottom:12px}
+.cards-count{background:rgba(255,255,255,.15);border-radius:20px;padding:6px 14px;font-weight:800;font-size:.85rem}
+.cards-close{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:50%;width:34px;height:34px;font-size:1rem;cursor:pointer}
+.cards-stage{flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px;max-width:520px;width:100%;margin:0 auto}
+.cards-inner{position:relative;width:100%;height:300px;perspective:1200px;cursor:pointer}
+.cards-face{position:absolute;inset:0;border-radius:24px;display:flex;align-items:center;justify-content:center;padding:26px;text-align:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;font-weight:700;font-size:1.15rem;line-height:1.45}
+.cards-front{background:linear-gradient(145deg,#7C3AED,#9F67FF);color:#fff;box-shadow:0 18px 40px rgba(124,58,237,.45)}
+.cards-back{background:linear-gradient(145deg,#0EA5A4,#12D1CF);color:#fff;transform:rotateY(180deg);box-shadow:0 18px 40px rgba(14,165,164,.45);font-size:1rem}
+.cards-inner.flipped{transform:rotateY(180deg);transition:transform .45s cubic-bezier(.4,1.4,.6,1)}
+.cards-inner{transition:transform .45s cubic-bezier(.4,1.4,.6,1)}
+.cards-hint{color:rgba(255,255,255,.75);text-align:center;font-size:.85rem}
+.cards-controls{display:flex;gap:12px;justify-content:center}
+.live-chip.lesson-on{background:linear-gradient(135deg,#F59E0B,#FBBF24);color:#3B1D00;font-weight:800}

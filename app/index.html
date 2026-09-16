@@ -317,6 +317,25 @@
     </div>
   </div>
 
+  <!-- FLASHCARDS OVERLAY -->
+  <div id="cards-overlay" class="cards-overlay hidden">
+    <div class="cards-head">
+      <span id="cards-count" class="cards-count">1 / 8</span>
+      <button class="cards-close" onclick="closeCards()">✕</button>
+    </div>
+    <div class="cards-stage">
+      <div id="cards-inner" class="cards-inner" onclick="flipCard()">
+        <div id="cards-front" class="cards-face cards-front"><span>Tap to start</span></div>
+        <div id="cards-back" class="cards-face cards-back"></div>
+      </div>
+      <p class="cards-hint">Tap card to flip 🔄</p>
+      <div class="cards-controls">
+        <button class="btn-chunky btn-teal" onclick="nextCard(-1)">← Back</button>
+        <button class="btn-chunky btn-primary" onclick="nextCard(1)">Next →</button>
+      </div>
+    </div>
+  </div>
+
   <!-- BOTTOM NAV -->
   <nav class="bottom-nav">
     <button class="nav-btn active" data-go="home"><span>🏠</span>Home</button>
