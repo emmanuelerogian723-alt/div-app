@@ -386,6 +386,9 @@ input, textarea { font-family: inherit; }
 .lib-progress-track { height: 10px; border-radius: 99px; background: #ede9fe; overflow: hidden; }
 .lib-progress-fill { height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg,#7c3aed,#c026d3); transition: width .6s ease; }
 .lib-progress p { text-align: center; color: #6b7280; font-size: 13px; margin-top: 8px; }
+.lib-cancel-btn { display: block; margin: 10px auto 0; padding: 7px 18px; border: none; border-radius: 99px;
+  background: #f3f4f6; color: #6b7280; font-size: 13px; font-weight: 600; }
+.lib-cancel-btn:active { background: #e5e7eb; }
 
 .lib-count-chip { font-size: 12px; color: #7c3aed; font-weight: 600; }
 .lib-empty { text-align: center; color: #9ca3af; font-size: 14px; line-height: 1.6; padding: 26px 10px; }

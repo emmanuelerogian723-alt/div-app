@@ -3,6 +3,15 @@
    Auth & sync: Firebase (project: ominiassist-ai)
 =================================================== */
 const STEW_API = 'https://stew-agent.onrender.com';
+/* S.T.E.W runs on a free tier that sleeps after inactivity — the first request after a nap
+   can take 30-60s to wake up. Ping it as soon as a screen that needs it opens, so by the time
+   the user actually uploads/asks something the instance is usually already warm. */
+let _stewWarmed = false;
+function warmStewApi() {
+  if (_stewWarmed) return;
+  _stewWarmed = true;
+  fetchWithTimeout(STEW_API + '/api/ocr/info', { method: 'GET' }, 20000).catch(() => { _stewWarmed = false; });
+}
 const FB = { apiKey: 'AIzaSyBRhBF6Nscqz53rMCF0ykAcMnWuRIrfgJw', projectId: 'ominiassist-ai' };
 const $ = id => document.getElementById(id);
 
@@ -239,7 +248,7 @@ function go(screen) {
   if (screen === 'assignments') renderAssignSubjects();
   if (screen === 'progress') renderProgressUI();
   if (screen === 'profile') renderProfile();
-  if (screen === 'library') renderLibrary();
+  if (screen === 'library') { renderLibrary(); warmStewApi(); }
   if (screen === 'live') startLive();
   if (screen !== 'live') endLive();
 }
@@ -683,11 +692,21 @@ window.__div_onNativeSpeech = t => {
   if (t) handleTranscript(t);
 };
 window.__div_onNativeSpeechEnd = () => $('recording-badge').classList.add('hidden');
+window.__div_onNativeSpeechError = err => {
+  $('recording-badge').classList.add('hidden');
+  const msg = err === 'denied' ? '😕 Mic permission denied — allow microphone access and try again'
+            : err === 'unavailable' ? '😕 Voice recognition isn\'t available on this device'
+            : "😕 Didn't catch that — try again, or type instead";
+  toast(msg);
+};
 
 function initVoice() {
-  if (window.DivNative) { voiceMode = 'native'; return; }
   const canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
-  if (canRecord) { voiceMode = 'recorder'; return; } // preferred web path — works on iOS Safari too
+  // Recorder path (MediaRecorder + S.T.E.W Whisper) is preferred everywhere, including the
+  // Android APK: the on-device native SpeechRecognizer needs Google Speech Services + network
+  // and fails silently with zero feedback when it can't hear you. Whisper is far more reliable.
+  if (canRecord) { voiceMode = 'recorder'; return; }
+  if (window.DivNative) { voiceMode = 'native'; return; } // last-resort fallback for old WebViews
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (SR) {
     voiceMode = 'webspeech';
@@ -742,7 +761,37 @@ function convertHeicIfNeeded(file) {
   });
 }
 
-async function uploadMaterial(rawFile) {
+/* Camera photos are often 8-12MB at full resolution — way more than OCR needs and slow
+   to upload on weak mobile data. Downscale to a sensible max width and re-encode as JPEG. */
+function compressImageIfNeeded(file) {
+  const skip = ['pdf'].includes(libExt(file.name)) || file.size < 900 * 1024;
+  if (skip) return Promise.resolve(file);
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    const cleanup = () => URL.revokeObjectURL(url);
+    img.onload = () => {
+      try {
+        const MAX_W = 1800;
+        const scale = Math.min(1, MAX_W / (img.naturalWidth || MAX_W));
+        const cv = document.createElement('canvas');
+        cv.width = Math.round((img.naturalWidth || MAX_W) * scale);
+        cv.height = Math.round((img.naturalHeight || MAX_W) * scale);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        cv.toBlob(blob => {
+          cleanup();
+          if (blob && blob.size < file.size) {
+            resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }));
+          } else resolve(file);
+        }, 'image/jpeg', 0.85);
+      } catch (e) { cleanup(); resolve(file); }
+    };
+    img.onerror = () => { cleanup(); resolve(file); };
+    img.src = url;
+  });
+}
+
+async function uploadMaterial(rawFile, _isRetry) {
   if (!rawFile) return;
   if (rawFile.size > 15 * 1024 * 1024) { toast('File too big — max 15MB'); return; }
   let ext = libExt(rawFile.name);
@@ -753,6 +802,19 @@ async function uploadMaterial(rawFile) {
   card.classList.add('hidden'); prog.classList.remove('hidden');
   const step = (p, m) => { fill.style.width = p + '%'; txt.textContent = m; };
 
+  // Let the user bail out instead of staring at a bar that might be stuck — also gives clear
+  // "it's still working, not frozen" feedback the longer a cold Render instance takes to wake.
+  let cancelled = false;
+  const cancelBtn = $('lib-cancel-btn');
+  const onCancel = () => { cancelled = true; prog.classList.add('hidden'); card.classList.remove('hidden'); };
+  if (cancelBtn) { cancelBtn.classList.remove('hidden'); cancelBtn.onclick = onCancel; }
+  const elapsedTimer = setInterval(() => {
+    const secs = Math.round((Date.now() - startedAt) / 1000);
+    if (secs === 20) txt.textContent = '📤 Still uploading... (slow connection or S.T.E.W AI waking up)';
+    if (secs === 45) txt.textContent = "⏳ Almost there — first request after inactivity can take a minute";
+  }, 1000);
+  const startedAt = Date.now();
+
   try {
     let file = rawFile;
     if (isHeic) {
@@ -760,6 +822,11 @@ async function uploadMaterial(rawFile) {
       file = await convertHeicIfNeeded(rawFile);
       ext = libExt(file.name);
     }
+    // Camera photos can be huge (8-12MB) — shrink before sending so uploads don't stall on
+    // weak mobile connections. Skipped for PDFs and already-small images.
+    step(11, '🗜️ Optimizing image...');
+    file = await compressImageIfNeeded(file);
+    if (cancelled) return;
 
     // Step 1 — OCR: extract the text with S.T.E.W OCR engine
     step(15, '📤 Uploading to S.T.E.W AI...');
@@ -767,12 +834,21 @@ async function uploadMaterial(rawFile) {
     fd.append('file', file); fd.append('lang', 'eng'); fd.append('include_confidence', 'false');
     let r1;
     try {
-      r1 = await fetchWithTimeout(STEW_API + '/api/ocr', { method: 'POST', body: fd }, 70000);
+      r1 = await fetchWithTimeout(STEW_API + '/api/ocr', { method: 'POST', body: fd }, 90000);
     } catch (e) {
+      // First failure after a cold start often succeeds on retry once the instance is warm —
+      // try once more silently before bothering the user with an error.
+      if (!_isRetry) {
+        clearInterval(elapsedTimer);
+        if (cancelBtn) cancelBtn.classList.add('hidden');
+        if (!cancelled) return uploadMaterial(rawFile, true);
+        return;
+      }
       throw new Error(e.name === 'AbortError'
         ? "S.T.E.W AI is waking up — this can take a minute on the first try. Try again now."
         : 'Network problem — check your internet and try again');
     }
+    if (cancelled) return;
     if (!r1.ok) throw new Error('S.T.E.W AI had trouble reading that file (error ' + r1.status + ')');
     const d1 = await r1.json();
     if (!d1.success) throw new Error(d1.detail || 'OCR failed');
@@ -808,10 +884,16 @@ async function uploadMaterial(rawFile) {
     step(100, '✅ Added to your library!');
     addXP(15);
     toast('📚 "' + material.name + '" added to your library!');
+    clearInterval(elapsedTimer);
+    if (cancelBtn) cancelBtn.classList.add('hidden');
     setTimeout(() => { prog.classList.add('hidden'); card.classList.remove('hidden'); renderLibrary(); }, 900);
   } catch (e) {
-    prog.classList.add('hidden'); card.classList.remove('hidden');
-    toast('😕 ' + (e.message || "Couldn't read that file — try again"));
+    clearInterval(elapsedTimer);
+    if (cancelBtn) cancelBtn.classList.add('hidden');
+    if (!cancelled) {
+      prog.classList.add('hidden'); card.classList.remove('hidden');
+      toast('😕 ' + (e.message || "Couldn't read that file — try again"));
+    }
   }
 }
 $('lib-file').addEventListener('change', e => { uploadMaterial(e.target.files[0]); e.target.value = ''; });
