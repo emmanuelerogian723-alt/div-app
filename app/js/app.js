@@ -857,16 +857,20 @@ async function uploadMaterial(rawFile, _isRetry) {
     step(55, '📖 S.T.E.W AI is reading ' + (d1.page_count > 1 ? d1.page_count + ' pages...' : 'your material...'));
 
     // Step 2 — AI identification: what is this material about?
-    const fd2 = new FormData();
-    fd2.append('file', file); fd2.append('task', 'analyze'); fd2.append('lang', 'eng');
-    let d2 = {};
+    // Reuse the text S.T.E.W OCR already extracted instead of calling /api/ocr/analyze
+    // (which would re-run the whole OCR — doubling a photo upload from ~45s to ~90s+).
+    let analysis = '';
     try {
-      const r2 = await fetchWithTimeout(STEW_API + '/api/ocr/analyze', { method: 'POST', body: fd2 }, 70000);
-      d2 = await r2.json();
+      analysis = await stewChat(
+        "In 2-3 short sentences: what subject and topic is this study material about? " +
+        "Start with the subject name. Material text (may be partial):\n\n" + text.slice(0, 3000),
+        'div_library');
     } catch (e) { /* analysis is a nice-to-have — fall back to using the raw text below */ }
     step(85, '🧠 Identifying the subject...');
 
-    const analysis = ((d2.analysis || d2.result || d2.answer || '') + '').trim();
+    analysis = (analysis + '').trim();
+    // stewChat returns friendly error strings on failure — don't let those become the "topic"
+    if (/didn't catch|Connection hiccup|taking too long|⏳|😕/i.test(analysis)) analysis = '';
     // First sentence of the analysis = the identified topic
     const topic = analysis.replace(/[*#>\n]/g, ' ').split(/(?<=[.!?])\s+/)[0] || (text.slice(0, 60) + '...');
     const material = {
