@@ -192,6 +192,31 @@ function studentContext() {
 }
 function wakeServer() { fetch(`${STEW_API}/heartbeat`).catch(() => {}); }
 
+/* ---------- DIV's Sketchpad: AI-drawn educational diagrams (SVG) ---------- */
+function sanitizeSvg(svg) {
+  svg = svg.replace(/<\?[\s\S]*?\?>/g, '').replace(/<!--[\s\S]*?-->/g, '');
+  svg = svg.replace(/<script[\s\S]*?<\/script>/gi, '');
+  svg = svg.replace(/<iframe[\s\S]*?<\/iframe>/gi, '').replace(/<(embed|object|foreignObject)[\s\S]*?(<\/\1>|\/>)>/gi, '');
+  svg = svg.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*')/gi, '');
+  svg = svg.replace(/javascript:/gi, '');
+  svg = svg.replace(/<a\b/gi, '<a_nonclick'); // kill links entirely
+  return svg.trim();
+}
+function extractSvg(raw) {
+  const m = (raw || '').match(/<svg[\s\S]*?<\/svg>/i);
+  return m ? sanitizeSvg(m[0]) : null;
+}
+async function requestDiagram(topic) {
+  const prompt = `Create a simple educational diagram to explain "${topic}" for a ${studentLevelLabel()}. Return ONLY the SVG markup — no explanations, no markdown, no code fences. Rules: exactly one <svg> root with viewBox="0 0 400 300" and width="400". Draw with circles, rects, ellipses, lines, arrows (line + polygon head), and label parts with <text> elements (font-size 13-16, font-family sans-serif, fill dark on light background). Use bright distinct colors (soft pastel fills with darker strokes). Keep it clean and uncluttered: max 10 labeled parts. Make it self-contained valid SVG that a student instantly understands.`;
+  const raw = await stewChat(prompt, 'div_draw');
+  return extractSvg(raw);
+}
+function fitDiagram(svg) { // make it scale nicely inside any bubble
+  if (svg.includes('width=')) svg = svg.replace(/width="\d+"/, 'width="100%"');
+  if (!/height=/.test(svg)) svg = svg.replace('<svg ', '<svg height="auto" ');
+  return svg;
+}
+
 /* ---------- Toast ---------- */
 let toastTimer;
 function toast(msg) {
@@ -536,8 +561,21 @@ function addMsg(role, text) {
   wrap.appendChild(div);
   wrap.scrollTop = wrap.scrollHeight;
 }
+function addDiagramMsg(svg, title) {
+  const wrap = $('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'msg bot msg-diagram';
+  div.innerHTML = `<div class="diagram-title">✏️ ${title || 'DIV\'s sketch'}</div><div class="diagram-body">${fitDiagram(sanitizeSvg(svg))}</div>`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+const DRAW_RE = /\b(draw|diagram|sketch|illustrat(e|ion)|visual|picture|chart|graph|show me (a|an|the) )\b/i;
+function drawTopicFrom(text) {
+  return text.replace(DRAW_RE, '').replace(/^\s*(me |us |us )?(a |an |the |of )?/i, '').replace(/\?+$/,'').trim();
+}
 async function sendChat(text) {
   if (!text.trim()) return;
+  const wantsDrawing = DRAW_RE.test(text);
   addMsg('user', text);
   $('chat-input').value = '';
   $('typing-row').classList.remove('hidden');
@@ -551,6 +589,15 @@ async function sendChat(text) {
     addMsg('bot', reply);
     speak(reply);
     $('chat-status').textContent = 'Online — always ready';
+    if (wantsDrawing) {
+      const topic = drawTopicFrom(text) || (activeMaterial && activeMaterial.topic) || text;
+      addMsg('bot', '✏️ Let me sketch that for you...');
+      try {
+        const svg = await requestDiagram(topic);
+        if (svg) { addDiagramMsg(svg, topic.slice(0, 40)); addXP(5); }
+        else addMsg('bot', "My sketch didn't come out right — ask me to describe it instead!");
+      } catch (e) { addMsg('bot', '✏️ Sketch failed — connection hiccup. Try again!'); }
+    }
   } catch (e) {
     $('typing-row').classList.add('hidden');
     addMsg('bot', "😕 I couldn't reach the AI. Try again!");
@@ -1346,6 +1393,48 @@ function startLesson(subject) {
   chip.classList.add('lesson-on');
   liveCaption('📖 <b>DIV:</b> Great choice! Starting your lesson on <b>' + subject + '</b> — tap the mic and say "start" or ask your first question!');
 }
+/* DIV's live sketchpad */
+async function liveDraw(topicOverride, fromLiveSend) {
+  if (liveBusy && !fromLiveSend) return;
+  const topic = (topicOverride || (liveLesson && liveLesson.subject) || '').trim();
+  if (!topic) { toast('Say "teach me a topic" first — then I can sketch it ✏️'); return; }
+  liveBusy = true;
+  const sk = $('live-sketch'), body = $('sketch-body');
+  sk.classList.remove('hidden');
+  body.innerHTML = '<div class="sketch-loading">✏️ DIV is sketching...</div>';
+  liveCaption('✏️ <b>DIV:</b> Let me draw that for you...');
+  try {
+    const svg = await requestDiagram(topic);
+    if (svg) {
+      body.innerHTML = fitDiagram(sanitizeSvg(svg));
+      liveCaption('✏️ <b>DIV:</b> There! A diagram of <b>' + topic + '</b> — I drew it on your screen. Ask me anything about it!');
+      speakLive("I've sketched a diagram of " + topic + " on your screen. Take a look, and tell me what part you'd like me to explain.");
+      addXP(5);
+    } else {
+      body.innerHTML = '<div class="sketch-loading">Sketch failed — try again 🙈</div>';
+    }
+  } catch (e) {
+    body.innerHTML = '<div class="sketch-loading">Connection hiccup — try again 🙈</div>';
+  }
+  liveBusy = false;
+}
+function closeSketch() { $('live-sketch').classList.add('hidden'); }
+
+/* End-of-lesson recap — like a real tutor summing up the session */
+async function lessonRecap() {
+  const subj = liveLesson ? liveLesson.subject : null;
+  if (!subj) return;
+  try {
+    const raw = await stewChat(`A tutoring call about "${subj}" just ended. Write a warm 3-sentence lesson recap for the student: what we covered, the key idea to remember, and one thing to practice. No markdown, max 60 words.`, 'div_' + (profile.name || 'student'));
+    go('tutor');
+    addMsg('bot', '📖 Lesson recap — ' + subj + ':');
+    addMsg('bot', raw);
+    speak(raw);
+    addXP(20);
+    toast('📖 +20 XP — lesson recap saved to your chat!');
+  } catch (e) {}
+}
+
 function clearLesson() {
   if (!liveLesson) return;
   liveLesson = null;
@@ -1374,6 +1463,8 @@ async function liveSend(text) {
     if (wantsSubject && (!liveLesson || liveLesson.subject.toLowerCase() !== wantsSubject.toLowerCase())) {
       startLesson(wantsSubject);
     }
+    const dt = /\b(draw|diagram|sketch|sketch it|draw it|picture|visual)\b/i.test(text) ? drawTopicFrom(text) : null;
+    if (dt !== null) liveDraw(dt && dt.length > 2 ? dt : undefined, true);
     if (liveLesson) {
       liveLesson.turn += 1;
       ctx += `[LESSON MODE — you are actively teaching "${liveLesson.subject}" live on a voice call, lesson turn ${liveLesson.turn}. Teach it properly: break the subject into small steps, explain ONE step per turn in simple language with a quick example, then end EVERY reply with a short question that checks understanding or moves the lesson forward. If they answer correctly, praise them briefly and continue to the next step. If they struggle, simplify and re-explain differently. If they say "stop", "quiz me" or change topic, wrap up with a 1-sentence recap and obey. CRITICAL: this is spoken aloud — max 70 words per reply, no lists, no markdown, no asterisks, just natural speech.] `;
@@ -1401,4 +1492,10 @@ $('mic-btn')?.addEventListener('click', () => { unlockAudio(); startVoiceInput()
 /* Live Talk wiring — startVoiceInput() itself toggles start/stop and the 'rec' class via setMicUI() */
 $('live-mic-btn').addEventListener('click', () => { unlockAudio(); startVoiceInput(); });
 $('live-eye-btn').addEventListener('click', () => { if (!liveBusy) captureScene('What do you see right now? Describe it.'); });
-$('live-end-btn').addEventListener('click', () => { endLive(); go('home'); toast('📞 Call ended'); });
+$('live-draw-btn')?.addEventListener('click', () => { if (!liveBusy) liveDraw(); });
+$('live-end-btn').addEventListener('click', () => {
+  const wasLesson = !!liveLesson;
+  endLive();
+  if (wasLesson) { lessonRecap(); }
+  else { go('home'); toast('📞 Call ended'); }
+});

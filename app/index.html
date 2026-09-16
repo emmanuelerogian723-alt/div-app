@@ -304,7 +304,11 @@
         <span class="live-chip" id="live-status-chip">● Live with DIV</span>
         <span class="live-chip live-vision-chip hidden" id="live-vision-chip">👁 DIV is watching</span>
       </div>
-      <div class="live-caption" id="live-caption">Tap the mic and talk to DIV — ask anything, show it anything!</div>
+      <div class="live-caption" id="live-caption">Tap the mic and talk to DIV — ask anything, or say <b>teach me biology</b> to start a lesson!</div>
+      <div id="live-sketch" class="live-sketch hidden">
+        <div class="sketch-head"><span>✏️ DIV is sketching</span><button class="sketch-close" onclick="closeSketch()">✕</button></div>
+        <div id="sketch-body" class="sketch-body"></div>
+      </div>
     </div>
     <div class="live-div-row">
       <div class="live-div-avatar"><div id="mascot-live" class="mascot-svg mascot-live-wrap"></div></div>
@@ -312,6 +316,7 @@
     </div>
     <div class="live-controls">
       <button id="live-eye-btn" class="live-btn live-btn-eye" title="What do you see?">👁</button>
+      <button id="live-draw-btn" class="live-btn live-btn-draw" title="DIV draws it">✏️</button>
       <button id="live-mic-btn" class="live-btn live-btn-mic" title="Talk to DIV">🎤</button>
       <button id="live-end-btn" class="live-btn live-btn-end" title="End call">📞</button>
     </div>

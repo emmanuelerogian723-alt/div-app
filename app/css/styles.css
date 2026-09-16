@@ -504,3 +504,17 @@ input, textarea { font-family: inherit; }
 .cards-hint{color:rgba(255,255,255,.75);text-align:center;font-size:.85rem}
 .cards-controls{display:flex;gap:12px;justify-content:center}
 .live-chip.lesson-on{background:linear-gradient(135deg,#F59E0B,#FBBF24);color:#3B1D00;font-weight:800}
+
+/* ---------- DIV sketchpad (live + chat diagrams) ---------- */
+.live-btn-draw{font-size:1.15rem}
+.live-sketch{position:absolute;inset:auto 8px 60px 8px;background:rgba(255,255,255,.97);border-radius:16px;box-shadow:0 12px 34px rgba(0,0,0,.35);overflow:hidden;z-index:30;animation:sketch-in .3s ease}
+@keyframes sketch-in{from{transform:translateY(18px);opacity:0}to{transform:none;opacity:1}}
+.sketch-head{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#7C3AED,#9F67FF);color:#fff;padding:8px 12px;font-weight:800;font-size:.8rem}
+.sketch-close{background:rgba(255,255,255,.25);border:none;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:.8rem}
+.sketch-body{padding:8px;max-height:46vh;overflow:auto;background:#fff;text-align:center}
+.sketch-body svg{max-width:100%;height:auto;border-radius:10px}
+.sketch-loading{color:#7C3AED;font-weight:700;padding:26px 10px;font-size:.9rem}
+.msg-diagram{padding:10px!important}
+.diagram-title{font-weight:800;font-size:.78rem;color:#7C3AED;margin-bottom:6px}
+.diagram-body{background:#fff;border-radius:12px;padding:6px;overflow-x:auto}
+.diagram-body svg{max-width:100%;height:auto}
